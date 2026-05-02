@@ -1,147 +1,227 @@
 import * as THREE from "three";
 
 export interface FidgetSettings {
-  extrudeDepth: number;
-  keycapSize: number;
-  pegRadius: number;
+  totalDepth: number;       // outer wall total height (mm), e.g. 22
+  innerFillDepth: number;   // inner fill height (mm), e.g. 12
+  insetAmount: number;      // how much inner fill is inset from outer wall (mm each side), e.g. 1
+  keycapSize: number;       // keycap square hole side length (mm), e.g. 14
+  pegRadius: number;        // inner clicker peg radius (mm), e.g. 3.5
+  targetSizeMm: number;     // target dimension of the imported SVG in mm
+  lockDimension: "width" | "height"; // which SVG axis to lock to targetSizeMm
 }
 
-/**
- * Create the outer shell: SVG shape extruded with a square keycap hole
- */
-export function createOuterShellGeometry(
+export const DEFAULT_SETTINGS: FidgetSettings = {
+  totalDepth: 22,
+  innerFillDepth: 12,
+  insetAmount: 1,
+  keycapSize: 14,
+  pegRadius: 3.5,
+  targetSizeMm: 50,
+  lockDimension: "width",
+};
+
+export interface OuterShellGeometries {
+  outerWall: THREE.BufferGeometry;
+  innerFill: THREE.BufferGeometry;
+  keycapHousing: THREE.BufferGeometry;
+  /** Offset so parts can be positioned with outer wall bottom at z=0 */
+  zOffsets: { outerWall: number; innerFill: number; keycapHousing: number };
+}
+
+export interface InnerClickerGeometries {
+  body: THREE.BufferGeometry;
+  peg: THREE.BufferGeometry;
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+export function createOuterShellGeometries(
   svgShapes: THREE.Shape[],
   settings: FidgetSettings,
   svgWidth: number,
   svgHeight: number
-): THREE.BufferGeometry {
-  // Scale shapes to fit nicely (~40mm bounding box)
-  const targetSize = 40;
-  const scaleX = targetSize / svgWidth;
-  const scaleY = targetSize / svgHeight;
-  const scale = Math.min(scaleX, scaleY);
+): OuterShellGeometries {
+  const { scale } = computeScale(settings, svgWidth, svgHeight);
+  const scaledW = svgWidth * scale;
+  const scaledH = svgHeight * scale;
 
-  const { extrudeDepth, keycapSize } = settings;
+  const baseShape = svgShapes.length > 0 ? svgShapes[0] : createDefaultShape(40);
+  const { totalDepth, innerFillDepth, insetAmount, keycapSize } = settings;
 
-  // Combine all SVG shapes into one
-  const mainShape = svgShapes.length > 0 ? svgShapes[0].clone() : createDefaultShape(targetSize);
+  // Inset scale factor: shrink from center by insetAmount on each side
+  const insetFactor = Math.max(
+    0.5,
+    Math.min(
+      scaledW - 2 * insetAmount,
+      scaledH - 2 * insetAmount
+    ) / Math.max(scaledW, scaledH)
+  );
 
-  // Scale and center the shape
-  const scaledShape = scaleShape(mainShape, scale, svgWidth, svgHeight);
+  // --- 1. Outer wall: ring = full SVG shape with inset shape as hole ---
+  const outerShape = transformShape(baseShape, scale, svgWidth, svgHeight);
+  const insetShapeForHole = transformShape(baseShape, scale * insetFactor, svgWidth, svgHeight);
+  // Add inset shape as hole to make a ring
+  const ringHole = new THREE.Path(insetShapeForHole.getPoints(64));
+  outerShape.holes.push(ringHole);
+  const outerWallGeo = extrudeShape(outerShape, totalDepth);
 
-  // Add square hole in center
-  const half = keycapSize / 2;
-  const hole = new THREE.Path();
-  hole.moveTo(-half, -half);
-  hole.lineTo(half, -half);
-  hole.lineTo(half, half);
-  hole.lineTo(-half, half);
-  hole.closePath();
-  scaledShape.holes.push(hole);
+  // --- 2. Inner fill: inset solid shape with keycap square hole ---
+  const fillShape = transformShape(baseShape, scale * insetFactor, svgWidth, svgHeight);
+  addSquareHole(fillShape, keycapSize);
+  const innerFillGeo = extrudeShape(fillShape, innerFillDepth);
 
-  const extrudeSettings: THREE.ExtrudeGeometryOptions = {
-    depth: extrudeDepth,
-    bevelEnabled: true,
-    bevelThickness: 0.3,
-    bevelSize: 0.3,
-    bevelSegments: 2,
+  // --- 3. Keycap housing: hollow square rim sitting inside the recess ---
+  const recessDepth = totalDepth - innerFillDepth; // 10mm
+  const housingDepth = Math.min(recessDepth * 0.8, 8); // use 80% of recess, max 8mm
+  const outerHalf = keycapSize / 2 + 2.5; // 2.5mm wall
+  const innerHalf = keycapSize / 2;
+  const housingShape = makeRectRingShape(outerHalf, innerHalf);
+  const keycapHousingGeo = extrudeShape(housingShape, housingDepth);
+
+  return {
+    outerWall: outerWallGeo,
+    innerFill: innerFillGeo,
+    keycapHousing: keycapHousingGeo,
+    zOffsets: {
+      outerWall: 0,
+      innerFill: 0,               // flush with bottom of outer wall
+      keycapHousing: innerFillDepth, // sits on top of inner fill inside recess
+    },
   };
-
-  const geo = new THREE.ExtrudeGeometry(scaledShape, extrudeSettings);
-  geo.center();
-  return geo;
 }
 
-/**
- * Create the inner clicker: smaller shape with square hole + circular peg
- */
-export function createInnerClickerGeometry(
+export function createInnerClickerGeometries(
   svgShapes: THREE.Shape[],
   settings: FidgetSettings,
   svgWidth: number,
   svgHeight: number
-): { body: THREE.BufferGeometry; peg: THREE.BufferGeometry } {
-  const targetSize = 28; // Smaller than outer
-  const scaleX = targetSize / svgWidth;
-  const scaleY = targetSize / svgHeight;
-  const scale = Math.min(scaleX, scaleY);
+): InnerClickerGeometries {
+  const { scale } = computeScale(settings, svgWidth, svgHeight);
+  const scaledW = svgWidth * scale;
+  const scaledH = svgHeight * scale;
 
-  const { extrudeDepth, keycapSize, pegRadius } = settings;
-  const innerDepth = extrudeDepth * 0.7;
+  const baseShape = svgShapes.length > 0 ? svgShapes[0] : createDefaultShape(40);
+  const { totalDepth, innerFillDepth, insetAmount, keycapSize, pegRadius } = settings;
 
-  const mainShape = svgShapes.length > 0 ? svgShapes[0].clone() : createDefaultShape(targetSize);
-  const scaledShape = scaleShape(mainShape, scale, svgWidth, svgHeight);
+  // Inner clicker fits inside the recess (10mm deep) with clearance
+  const recessDepth = totalDepth - innerFillDepth;
+  const clickerDepth = recessDepth - 1; // 1mm clearance at top
 
-  // Square hole
-  const half = keycapSize / 2;
-  const hole = new THREE.Path();
-  hole.moveTo(-half, -half);
-  hole.lineTo(half, -half);
-  hole.lineTo(half, half);
-  hole.lineTo(-half, half);
-  hole.closePath();
-  scaledShape.holes.push(hole);
+  // Clicker is scaled to fit inside the inset area with 0.5mm clearance
+  const insetFactor = Math.max(
+    0.5,
+    Math.min(
+      scaledW - 2 * insetAmount,
+      scaledH - 2 * insetAmount
+    ) / Math.max(scaledW, scaledH)
+  );
+  const clickerScale = scale * insetFactor * 0.98; // 2% clearance
 
-  const bodyExtrudeSettings: THREE.ExtrudeGeometryOptions = {
-    depth: innerDepth,
-    bevelEnabled: true,
-    bevelThickness: 0.2,
-    bevelSize: 0.2,
-    bevelSegments: 2,
-  };
+  const clickerShape = transformShape(baseShape, clickerScale, svgWidth, svgHeight);
+  addSquareHole(clickerShape, keycapSize);
 
-  const bodyGeo = new THREE.ExtrudeGeometry(scaledShape, bodyExtrudeSettings);
-  bodyGeo.center();
+  const bodyGeo = extrudeShape(clickerShape, clickerDepth);
 
-  // Circular peg (cylinder)
-  const pegGeo = new THREE.CylinderGeometry(pegRadius, pegRadius, extrudeDepth * 0.5, 32);
+  // Peg cylinder: attached to bottom of inner clicker, fits through keycap hole
+  const pegHeight = innerFillDepth * 0.6;
+  const pegGeo = new THREE.CylinderGeometry(pegRadius, pegRadius, pegHeight, 32);
 
   return { body: bodyGeo, peg: pegGeo };
 }
 
-function scaleShape(shape: THREE.Shape, scale: number, svgWidth: number, svgHeight: number): THREE.Shape {
-  const matrix = new THREE.Matrix3();
-  // Scale and flip Y (SVG Y is inverted)
-  matrix.set(scale, 0, -svgWidth * scale * 0.5, 0, -scale, svgHeight * scale * 0.5, 0, 0, 1);
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-  const scaledShape = new THREE.Shape();
-  const pts = shape.getPoints(32);
+function computeScale(
+  settings: FidgetSettings,
+  svgWidth: number,
+  svgHeight: number
+): { scale: number } {
+  const { targetSizeMm, lockDimension } = settings;
+  const base = lockDimension === "width" ? svgWidth : svgHeight;
+  const scale = base > 0 ? targetSizeMm / base : 1;
+  return { scale };
+}
 
-  if (pts.length === 0) return scaledShape;
+function transformShape(
+  shape: THREE.Shape,
+  scale: number,
+  svgWidth: number,
+  svgHeight: number
+): THREE.Shape {
+  // SVG origin is top-left with Y down; we flip Y and center
+  const cx = (svgWidth * scale) / 2;
+  const cy = (svgHeight * scale) / 2;
 
-  const transformed = pts.map((p) => {
-    const v = new THREE.Vector2(p.x, p.y).applyMatrix3(matrix);
-    return v;
-  });
+  const pts = shape.getPoints(64).map((p) => new THREE.Vector2(p.x * scale - cx, -(p.y * scale - cy)));
+  const out = new THREE.Shape();
+  out.setFromPoints(pts);
 
-  scaledShape.setFromPoints(transformed);
-
-  // Transform holes too
   for (const hole of shape.holes) {
-    const holePts = hole.getPoints(16).map((p) => {
-      return new THREE.Vector2(p.x, p.y).applyMatrix3(matrix);
-    });
-    const newHole = new THREE.Path();
-    newHole.setFromPoints(holePts);
-    scaledShape.holes.push(newHole);
+    const holePts = hole.getPoints(32).map((p) => new THREE.Vector2(p.x * scale - cx, -(p.y * scale - cy)));
+    const h = new THREE.Path();
+    h.setFromPoints(holePts);
+    out.holes.push(h);
   }
+  return out;
+}
 
-  return scaledShape;
+function addSquareHole(shape: THREE.Shape, size: number): void {
+  const half = size / 2;
+  const hole = new THREE.Path();
+  hole.moveTo(-half, -half);
+  hole.lineTo(half, -half);
+  hole.lineTo(half, half);
+  hole.lineTo(-half, half);
+  hole.closePath();
+  shape.holes.push(hole);
+}
+
+function makeRectRingShape(outerHalf: number, innerHalf: number): THREE.Shape {
+  const outer = new THREE.Shape();
+  outer.moveTo(-outerHalf, -outerHalf);
+  outer.lineTo(outerHalf, -outerHalf);
+  outer.lineTo(outerHalf, outerHalf);
+  outer.lineTo(-outerHalf, outerHalf);
+  outer.closePath();
+
+  const hole = new THREE.Path();
+  hole.moveTo(-innerHalf, -innerHalf);
+  hole.lineTo(innerHalf, -innerHalf);
+  hole.lineTo(innerHalf, innerHalf);
+  hole.lineTo(-innerHalf, innerHalf);
+  hole.closePath();
+  outer.holes.push(hole);
+
+  return outer;
+}
+
+function extrudeShape(shape: THREE.Shape, depth: number): THREE.BufferGeometry {
+  return new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: true,
+    bevelThickness: 0.2,
+    bevelSize: 0.2,
+    bevelSegments: 2,
+  });
 }
 
 function createDefaultShape(size: number): THREE.Shape {
   const half = size / 2;
   const r = size * 0.1;
-  const shape = new THREE.Shape();
-  shape.moveTo(-half + r, -half);
-  shape.lineTo(half - r, -half);
-  shape.quadraticCurveTo(half, -half, half, -half + r);
-  shape.lineTo(half, half - r);
-  shape.quadraticCurveTo(half, half, half - r, half);
-  shape.lineTo(-half + r, half);
-  shape.quadraticCurveTo(-half, half, -half, half - r);
-  shape.lineTo(-half, -half + r);
-  shape.quadraticCurveTo(-half, -half, -half + r, -half);
-  shape.closePath();
-  return shape;
+  const s = new THREE.Shape();
+  s.moveTo(-half + r, -half);
+  s.lineTo(half - r, -half);
+  s.quadraticCurveTo(half, -half, half, -half + r);
+  s.lineTo(half, half - r);
+  s.quadraticCurveTo(half, half, half - r, half);
+  s.lineTo(-half + r, half);
+  s.quadraticCurveTo(-half, half, -half, half - r);
+  s.lineTo(-half, -half + r);
+  s.quadraticCurveTo(-half, -half, -half + r, -half);
+  s.closePath();
+  return s;
 }
