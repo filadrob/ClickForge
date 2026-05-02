@@ -144,7 +144,7 @@ function InnerClickerGroup({
   );
 
   const { totalDepth, innerFillDepth } = settings;
-  const { clickerTotalDepth, clickerFloorDepth, bossFloorGap, bossHeight, pegHeight } = geos;
+  const { clickerTotalDepth, clickerFloorDepth, bossFloorGap, bossHeight, pegHeight, pegBottomOffset } = geos;
 
   // In normal mode the clicker floats beside the shell.
   // In fit-check mode it is positioned to sit exactly inside the recess.
@@ -163,10 +163,11 @@ function InnerClickerGroup({
   const baseZ  = -clickerTotalDepth / 2;
   const floorZ = baseZ;                              // solid floor: 0 → clickerFloorDepth
   const wallsZ = baseZ + clickerFloorDepth;          // walls: clickerFloorDepth → top
-  // Boss: starts bossFloorGap mm from absolute clicker bottom, embedding 1 mm into
-  // the solid floor section for structural anchoring.
+  // Boss: starts bossFloorGap mm from absolute clicker bottom.
   const bossZ  = baseZ + bossFloorGap + bossHeight / 2;
-  const pegZ   = baseZ - pegHeight / 2;              // peg hangs below floor
+  // Peg: starts pegBottomOffset mm above the clicker bottom (inside the body),
+  // extends 1 mm into the cavity — does NOT push through the back face.
+  const pegZ   = baseZ + pegBottomOffset + pegHeight / 2;
 
   return (
     <group position={groupPos}>

@@ -89,7 +89,10 @@ export interface InnerClickerGeometries {
   clickerFloorDepth: number;
   bossFloorGap: number;
   bossHeight: number;
+  /** Total height of the peg cylinder (geometry). */
   pegHeight: number;
+  /** Distance from the absolute clicker bottom to the peg's bottom face (mm). */
+  pegBottomOffset: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -231,8 +234,16 @@ export function createInnerClickerGeometries(
   const bossRadius = bossDiameter / 2;
   const bossGeo = new THREE.CylinderGeometry(bossRadius, bossRadius, bossHeight, 48);
 
-  const pegHeight = keycapPocketDepth * 0.6;
-  const pegGeo = new THREE.CylinderGeometry(pegRadius, pegRadius, pegHeight, 32);
+  // Peg: starts 1 mm above the clicker bottom (same gap as the boss) and
+  // extends exactly 1 mm into the cavity above the solid floor — it never
+  // protrudes out the back face.
+  //   bottom: bossFloorGap  (1 mm from clicker base)
+  //   top:    clickerFloorDepth + 1  (1 mm above cavity floor)
+  //   height: (clickerFloorDepth + 1) − bossFloorGap
+  const pegBottomOffset = bossFloorGap;
+  const PEG_CAVITY_OVERLAP = 1.0; // mm the peg protrudes into the cavity
+  const pegHeight = (clickerFloorDepth + PEG_CAVITY_OVERLAP) - pegBottomOffset;
+  const pegGeo = new THREE.CylinderGeometry(pegRadius, pegRadius, Math.max(pegHeight, 0.5), 32);
 
   return {
     floor: floorGeo,
@@ -244,6 +255,7 @@ export function createInnerClickerGeometries(
     bossFloorGap,
     bossHeight,
     pegHeight,
+    pegBottomOffset,
   };
 }
 
