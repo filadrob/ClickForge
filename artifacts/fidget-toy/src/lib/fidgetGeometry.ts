@@ -25,6 +25,10 @@ export interface FidgetSettings {
   crossSize: number;           // overall bounding box of the plus sign (mm), e.g. 4.18
   crossDepth: number;          // how deep the cross is cut (mm), e.g. 4.8
   crossArmWidth: number;       // width of each cross arm (mm), e.g. 1.31
+  // Orientation flips — mirror the part so the decorative face is on the
+  // correct side for printing / assembly
+  flipShell: boolean;          // flip outer shell upside-down (rotate 180° around X)
+  flipClicker: boolean;        // flip inner clicker upside-down (rotate 180° around X)
 }
 
 export const DEFAULT_SETTINGS: FidgetSettings = {
@@ -48,6 +52,8 @@ export const DEFAULT_SETTINGS: FidgetSettings = {
   crossSize: 4.18,
   crossDepth: 4.8,
   crossArmWidth: 1.31,
+  flipShell: false,
+  flipClicker: false,
 };
 
 /**

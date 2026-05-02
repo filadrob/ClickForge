@@ -73,11 +73,16 @@ function OuterShellGroup({
     [shapes, settings, svgWidth, svgHeight]
   );
 
-  const groupZ = -settings.totalDepth / 2;
+  const flip = settings.flipShell ?? false;
+  // Geometry runs from local z=0 to z=totalDepth. When unflipped we centre it
+  // at world z=0 by shifting the group to -totalDepth/2.  When flipped we
+  // rotate 180° around X (so local +z becomes world -z) and shift to
+  // +totalDepth/2 so the part still straddles world z=0.
+  const groupZ = flip ? settings.totalDepth / 2 : -settings.totalDepth / 2;
   const groupX = fitCheck ? 0 : -35;
 
   return (
-    <group position={[groupX, 0, groupZ]}>
+    <group position={[groupX, 0, groupZ]} rotation={[flip ? Math.PI : 0, 0, 0]}>
       {/* Outer wall ring — ghost in fit-check so you can see inside */}
       <mesh ref={outerWallRef} position={[0, 0, geos.zOffsets.outerWall]} castShadow={!fitCheck} receiveShadow>
         <primitive object={geos.outerWall} />
@@ -151,6 +156,8 @@ function InnerClickerGroup({
   //   Recess bottom (world z) = -totalDepth/2 + innerFillDepth
   //   Clicker local geo runs 0 → clickerTotalDepth; centre offset = -clickerTotalDepth/2
   //   → groupZ = -totalDepth/2 + innerFillDepth + clickerTotalDepth/2
+  const flip = settings.flipClicker ?? false;
+
   const normalGroupPos: [number, number, number] = [35, 0, 0];
   const fitCheckGroupPos: [number, number, number] = [
     0,
@@ -168,8 +175,10 @@ function InnerClickerGroup({
   const bossBaseZ  = baseZ + bossFloorGap;                    // solid base starts here
   const bossMainZ  = bossBaseZ + bossBaseHeight;              // main shell starts here
 
+  // Clicker geometry is already centred at local z=0 (spans –depth/2 → +depth/2),
+  // so a 180° rotation around X keeps it centred without any extra translation.
   return (
-    <group position={groupPos}>
+    <group position={groupPos} rotation={[flip ? Math.PI : 0, 0, 0]}>
       <mesh ref={clickerFloorRef} position={[0, 0, floorZ]} castShadow receiveShadow>
         <primitive object={geos.floor} />
         <meshStandardMaterial color="#10B981" metalness={0.25} roughness={0.45} />
@@ -483,6 +492,15 @@ export default function Studio() {
                 Outer Shell
               </h2>
               <div className="space-y-5">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={settings.flipShell ?? false}
+                    onChange={(e) => setSetting("flipShell", e.target.checked)}
+                    className="h-4 w-4 rounded accent-primary"
+                  />
+                  <span className="text-sm">Flip orientation</span>
+                </label>
                 <SliderRow
                   label="Total depth"
                   value={settings.totalDepth}
@@ -580,6 +598,15 @@ export default function Studio() {
                 Inner Clicker
               </h2>
               <div className="space-y-5">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={settings.flipClicker ?? false}
+                    onChange={(e) => setSetting("flipClicker", e.target.checked)}
+                    className="h-4 w-4 rounded accent-primary"
+                  />
+                  <span className="text-sm">Flip orientation</span>
+                </label>
                 <SliderRow
                   label="Total thickness"
                   value={settings.clickerTotalDepth ?? DEFAULT_SETTINGS.clickerTotalDepth}
