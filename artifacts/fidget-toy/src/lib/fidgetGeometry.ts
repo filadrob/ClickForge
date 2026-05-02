@@ -210,7 +210,12 @@ function transformToMm(
 ): THREE.Shape {
   const cx = (svgWidth  * scale) / 2;
   const cy = (svgHeight * scale) / 2;
-  const pts = shape.getPoints(128).map(
+  // getPoints(n) returns n+1 samples including the closing t=1 point.
+  // For a closed THREE.Shape t=1 equals t=0, so we take only the first n
+  // samples (slice off the last) to avoid a degenerate zero-length closing
+  // edge that would corrupt the polygon-offset computation.
+  const raw = shape.getPoints(128); // 129 points, last ≈ first for closed paths
+  const pts = raw.slice(0, raw.length - 1).map(
     (p) => new THREE.Vector2(p.x * scale - cx, -(p.y * scale - cy))
   );
   const out = new THREE.Shape();

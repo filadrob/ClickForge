@@ -50,11 +50,21 @@ export function insetPolygon(
 ): THREE.Vector2[][] {
   if (points.length < 3 || offsetMm <= 0) return [];
 
-  const area0 = signedArea(points);
+  // THREE.Shape.getPoints(n) returns n+1 samples at t=0…1.  For a closed
+  // path pts[0] === pts[n], which creates a zero-length degenerate edge that
+  // breaks the edge-normal computation.  Strip the closing duplicate here so
+  // callers never have to think about it.
+  const last  = points[points.length - 1];
+  const first = points[0];
+  const deduped =
+    last.distanceTo(first) < 1e-6 ? points.slice(0, -1) : points;
+  if (deduped.length < 3) return [];
+
+  const area0 = signedArea(deduped);
   if (Math.abs(area0) < 1e-9) return [];
 
   // Ensure CCW orientation (positive area in standard math / Three.js Y-up)
-  const pts = area0 < 0 ? [...points].reverse() : [...points];
+  const pts = area0 < 0 ? [...deduped].reverse() : [...deduped];
 
   // Compute the raw offset polygon
   const raw = computeRawOffset(pts, offsetMm, miterLimit);
