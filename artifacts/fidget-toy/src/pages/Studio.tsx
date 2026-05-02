@@ -472,7 +472,7 @@ export default function Studio() {
               {settings.pinHolesEnabled && (
                 <SliderRow
                   label="Pin hole radius"
-                  value={settings.pinHoleRadius}
+                  value={settings.pinHoleRadius ?? DEFAULT_SETTINGS.pinHoleRadius}
                   min={0.4}
                   max={2}
                   step={0.1}
@@ -669,14 +669,14 @@ function SliderRow({
       <div className="flex justify-between items-center mb-1">
         <Label className="text-xs">{label}</Label>
         <span className="text-xs font-mono text-muted-foreground">
-          {value.toFixed(step < 1 ? 1 : 0)} {unit}
+          {(value ?? 0).toFixed(step < 1 ? 1 : 0)} {unit}
         </span>
       </div>
       <Slider
         min={min}
         max={max}
         step={step}
-        value={[value]}
+        value={[value ?? min]}
         onValueChange={([v]) => onChange(v)}
       />
     </div>
