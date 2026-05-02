@@ -205,29 +205,32 @@ function makeCircleShape(radius: number, segments = 64): THREE.Shape {
 
 /**
  * Punch a Cherry-MX-style plus/cross pocket into a THREE.Shape as a hole.
- * Vertices are wound CW (negative area) — correct for a hole in a CCW outer shape.
+ *
+ * Uses moveTo/lineTo/closePath (the same pattern as addSquareHole) so the
+ * hole path is properly closed before earcut triangulation.
+ *
+ * Vertices are wound CW — correct for a hole whose outer shape is CCW.
+ *
  * @param totalSize  Overall bounding box of the cross (mm), e.g. 4.18.
  * @param armWidth   Width of each arm of the cross (mm), e.g. 1.31.
  */
 function addCrossHole(shape: THREE.Shape, totalSize: number, armWidth: number): void {
   const h = totalSize / 2;
   const a = armWidth  / 2;
-  const pts: THREE.Vector2[] = [
-    new THREE.Vector2(-a,  h),
-    new THREE.Vector2( a,  h),
-    new THREE.Vector2( a,  a),
-    new THREE.Vector2( h,  a),
-    new THREE.Vector2( h, -a),
-    new THREE.Vector2( a, -a),
-    new THREE.Vector2( a, -h),
-    new THREE.Vector2(-a, -h),
-    new THREE.Vector2(-a, -a),
-    new THREE.Vector2(-h, -a),
-    new THREE.Vector2(-h,  a),
-    new THREE.Vector2(-a,  a),
-  ];
   const hole = new THREE.Path();
-  hole.setFromPoints(pts);
+  hole.moveTo(-a,  h);
+  hole.lineTo( a,  h);
+  hole.lineTo( a,  a);
+  hole.lineTo( h,  a);
+  hole.lineTo( h, -a);
+  hole.lineTo( a, -a);
+  hole.lineTo( a, -h);
+  hole.lineTo(-a, -h);
+  hole.lineTo(-a, -a);
+  hole.lineTo(-h, -a);
+  hole.lineTo(-h,  a);
+  hole.lineTo(-a,  a);
+  hole.closePath();
   shape.holes.push(hole);
 }
 
