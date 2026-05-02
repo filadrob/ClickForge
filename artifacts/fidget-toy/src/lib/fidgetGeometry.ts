@@ -175,11 +175,12 @@ export function createOuterShellGeometries(
     ? innerPts.slice(0, -1)
     : innerPts;
   ringShape.holes.push(new THREE.Path(innerHolePts));
-  const outerWallGeo = extrudeShape(ringShape, totalDepth);
+  const shellStats: GeoStat[] = [];
+  const outerWallGeo = extrudeShape(ringShape, totalDepth, "shell/outerWall", shellStats);
 
   // ── 2. Solid floor — never penetrated ──────────────────────────────────
   const floorShape = cloneShape(innerShape);
-  const innerFillFloorGeo = extrudeShape(floorShape, floorDepth);
+  const innerFillFloorGeo = extrudeShape(floorShape, floorDepth, "shell/innerFloor", shellStats);
 
   const ox = settings.pocketOffsetX ?? 0;
   const oy = settings.pocketOffsetY ?? 0;
@@ -189,13 +190,17 @@ export function createOuterShellGeometries(
   if (pinHolesEnabled && pinDepth > 0) {
     const pinShape = cloneShape(innerShape);
     addMXPinHoles(pinShape, pinHoleRadius, ox, oy);
-    innerFillPinSectionGeo = extrudeShape(pinShape, pinDepth);
+    innerFillPinSectionGeo = extrudeShape(pinShape, pinDepth, "shell/pinSection", shellStats);
   }
 
   // ── 4. Keycap square walls (upper / shallower part of pocket) ──────────
   const wallsShape = cloneShape(innerShape);
   addSquareHole(wallsShape, keycapSize, ox, oy);
-  const innerFillWallsGeo = extrudeShape(wallsShape, squareDepth);
+  const innerFillWallsGeo = extrudeShape(wallsShape, squareDepth, "shell/keycapWalls", shellStats);
+
+  console.log("[fidget-geo] SHELL", shellStats.map(s =>
+    `${s.label}:${s.nanCount + s.spikeCount > 0 ? "SPIKE!" : "ok"} v=${s.verts} maxXY=(${s.maxX.toFixed(1)},${s.maxY.toFixed(1)})${s.firstSpike ? " first="+s.firstSpike : ""}`
+  ).join(" | "));
 
   return {
     outerWall: outerWallGeo,
@@ -299,12 +304,13 @@ export function createInnerClickerGeometries(
   const oy = settings.pocketOffsetY ?? 0;
 
   // Solid floor — expanded outward by FLOOR_BLEED to close the slicer gap
+  const clickerStats: GeoStat[] = [];
   const floorShape = expandShapeOutward(cloneShape(clickerShape), FLOOR_BLEED);
-  const floorGeo = extrudeShape(floorShape, clickerFloorDepth);
+  const floorGeo = extrudeShape(floorShape, clickerFloorDepth, "clicker/floor", clickerStats);
   // Upper section — switch housing cavity cut from the top (original size)
   const wallsShape = cloneShape(clickerShape);
   addSquareHole(wallsShape, clickerSquareSize, ox, oy);
-  const wallsGeo = extrudeShape(wallsShape, clickerSquareDepth);
+  const wallsGeo = extrudeShape(wallsShape, clickerSquareDepth, "clicker/walls", clickerStats);
 
   // ── Actuator boss with MX cross pocket ──────────────────────────────────
   const bossRadius     = bossDiameter / 2;
@@ -318,12 +324,16 @@ export function createInnerClickerGeometries(
 
   // Boss is offset by (ox, oy) so it stays centred on the switch cavity.
   const bossBaseShape = makeCircleShape(bossRadius, 64, ox, oy);
-  const bossBaseGeo   = extrudeShape(bossBaseShape, bossBaseHeight);
+  const bossBaseGeo   = extrudeShape(bossBaseShape, bossBaseHeight, "clicker/bossBase", clickerStats);
 
   // Main section: circle with MX cross pocket cut through from top to bottom
   const bossMainShape = makeCircleShape(bossRadius, 64, ox, oy);
   addCrossHole(bossMainShape, crossSize, crossArmWidth, ox, oy);
-  const bossMainGeo   = extrudeShape(bossMainShape, bossCrossDepth);
+  const bossMainGeo   = extrudeShape(bossMainShape, bossCrossDepth, "clicker/bossMain", clickerStats);
+
+  console.log("[fidget-geo] CLICKER", clickerStats.map(s =>
+    `${s.label}:${s.nanCount + s.spikeCount > 0 ? "SPIKE!" : "ok"} v=${s.verts} maxXY=(${s.maxX.toFixed(1)},${s.maxY.toFixed(1)})${s.firstSpike ? " first="+s.firstSpike : ""}`
+  ).join(" | "));
 
   return {
     floor: floorGeo,
@@ -466,17 +476,30 @@ function expandShapeOutward(shape: THREE.Shape, amountMm: number): THREE.Shape {
 
   if (edges.length < 3) return shape;
 
-  // Find intersection of consecutive shifted edges to get new vertices
+  // Find intersection of consecutive shifted edges to get new vertices.
+  // Miter limit: when two adjacent edges are nearly collinear (common after
+  // resampling to 128 pts), their shifted parallels meet very far away.
+  // Cap the displacement to prevent spike vertices that render as infinite lines.
+  const maxMiter = Math.max(amountMm * 8, 0.5); // generous but finite cap
   const result: THREE.Vector2[] = [];
   for (let i = 0; i < edges.length; i++) {
     const e0 = edges[(i - 1 + edges.length) % edges.length];
     const e1 = edges[i];
     const denom = e0.dx * e1.dy - e0.dy * e1.dx;
     if (Math.abs(denom) < 1e-10) {
+      // Parallel edges — use start of outgoing edge (no miter needed)
       result.push(new THREE.Vector2(e1.px, e1.py));
     } else {
       const t = ((e1.px - e0.px) * e1.dy - (e1.py - e0.py) * e1.dx) / denom;
-      result.push(new THREE.Vector2(e0.px + t * e0.dx, e0.py + t * e0.dy));
+      const ix = e0.px + t * e0.dx;
+      const iy = e0.py + t * e0.dy;
+      // Miter limit: clamp spikes caused by near-collinear resampled points
+      const dist = Math.hypot(ix - e1.px, iy - e1.py);
+      if (dist > maxMiter) {
+        result.push(new THREE.Vector2(e1.px, e1.py));
+      } else {
+        result.push(new THREE.Vector2(ix, iy));
+      }
     }
   }
 
@@ -643,9 +666,19 @@ function addMXPinHoles(shape: THREE.Shape, tolerance: number, cx = 0, cy = 0): v
     [  2.54,  5.08, 0.75 ],
     [ -3.81,  2.54, 0.75 ],
   ];
+  const SEG = 32;
   for (const [x, y, r] of pins) {
+    // Use explicit circle points instead of absarc(0→2π).
+    // absarc creates an EllipseCurve whose getPoints(n) returns n+1 points
+    // with the last == first (closing duplicate), producing a degenerate
+    // zero-area side face (spike) in ExtrudeGeometry.
+    const pts: THREE.Vector2[] = [];
+    for (let i = 0; i < SEG; i++) {
+      const angle = (i / SEG) * Math.PI * 2;
+      pts.push(new THREE.Vector2(cx + x + Math.cos(angle) * (r + tolerance), cy + y + Math.sin(angle) * (r + tolerance)));
+    }
     const h = new THREE.Path();
-    h.absarc(cx + x, cy + y, r + tolerance, 0, Math.PI * 2, false);
+    h.setFromPoints(pts);
     shape.holes.push(h);
   }
 }
@@ -667,8 +700,45 @@ function addSquareHole(shape: THREE.Shape, size: number, cx = 0, cy = 0): void {
   shape.holes.push(hole);
 }
 
-function extrudeShape(shape: THREE.Shape, depth: number): THREE.BufferGeometry {
-  return new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
+interface GeoStat {
+  label: string;
+  verts: number;
+  maxX: number; maxY: number; maxZ: number;
+  nanCount: number;
+  spikeCount: number; // vertices with any coord > SPIKE_THRESHOLD
+  firstSpike: string | null;
+}
+
+const SPIKE_THRESHOLD = 300; // anything >300 mm is suspicious for a ~50 mm model
+
+function checkGeo(geo: THREE.BufferGeometry, label: string, stats: GeoStat[]): THREE.BufferGeometry {
+  const pos = geo.attributes.position;
+  const stat: GeoStat = { label, verts: pos?.count ?? 0, maxX: 0, maxY: 0, maxZ: 0, nanCount: 0, spikeCount: 0, firstSpike: null };
+  if (pos) {
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      if (!isFinite(x) || !isFinite(y) || !isFinite(z)) {
+        stat.nanCount++;
+        if (!stat.firstSpike) stat.firstSpike = `v[${i}]=(${x},${y},${z})`;
+      } else {
+        stat.maxX = Math.max(stat.maxX, Math.abs(x));
+        stat.maxY = Math.max(stat.maxY, Math.abs(y));
+        stat.maxZ = Math.max(stat.maxZ, Math.abs(z));
+        if (Math.abs(x) > SPIKE_THRESHOLD || Math.abs(y) > SPIKE_THRESHOLD || Math.abs(z) > SPIKE_THRESHOLD) {
+          stat.spikeCount++;
+          if (!stat.firstSpike) stat.firstSpike = `v[${i}]=(${x.toFixed(1)},${y.toFixed(1)},${z.toFixed(1)})`;
+        }
+      }
+    }
+  }
+  stats.push(stat);
+  return geo;
+}
+
+function extrudeShape(shape: THREE.Shape, depth: number, label = "?", stats?: GeoStat[]): THREE.BufferGeometry {
+  const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
+  if (stats) checkGeo(geo, label, stats);
+  return geo;
 }
 
 function createDefaultShape(size: number): THREE.Shape {
