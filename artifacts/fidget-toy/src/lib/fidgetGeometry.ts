@@ -21,6 +21,10 @@ export interface FidgetSettings {
   bossDiameter: number;        // boss cylinder diameter (mm), e.g. 5.87
   bossHeight: number;          // boss cylinder height (mm), e.g. 4.92
   bossFloorGap: number;        // gap from clicker absolute bottom to boss start (mm), e.g. 1.0
+  // MX stem cross pocket (cut from the top face of the boss downward)
+  crossSize: number;           // overall bounding box of the plus sign (mm), e.g. 4.18
+  crossDepth: number;          // how deep the cross is cut (mm), e.g. 4.8
+  crossArmWidth: number;       // width of each cross arm (mm), e.g. 1.31
 }
 
 export const DEFAULT_SETTINGS: FidgetSettings = {
@@ -41,6 +45,9 @@ export const DEFAULT_SETTINGS: FidgetSettings = {
   bossDiameter: 5.87,
   bossHeight: 4.92,
   bossFloorGap: 1.0,
+  crossSize: 4.18,
+  crossDepth: 4.8,
+  crossArmWidth: 1.31,
 };
 
 /**
@@ -80,12 +87,22 @@ export interface InnerClickerGeometries {
   floor: THREE.BufferGeometry;
   /** Upper section with switch housing cavity cut from top. */
   walls: THREE.BufferGeometry;
-  /** Central actuator boss cylinder, seated inside the cavity. */
-  boss: THREE.BufferGeometry;
+  /**
+   * Solid base of the boss (below the cross pocket) — gives the pocket a
+   * closed floor so the boss doesn't extrude all the way through.
+   */
+  bossBase: THREE.BufferGeometry;
+  /**
+   * Main cylindrical shell of the boss with the MX cross pocket cut through
+   * it from the top face downward.
+   */
+  bossMain: THREE.BufferGeometry;
   clickerTotalDepth: number;
   clickerFloorDepth: number;
   bossFloorGap: number;
   bossHeight: number;
+  /** Height of the solid base section (= bossHeight − crossDepth, min 0.05 mm). */
+  bossBaseHeight: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -174,6 +191,46 @@ export function createOuterShellGeometries(
   };
 }
 
+/** Build a circle THREE.Shape centred at the origin (replaces CylinderGeometry when holes are needed). */
+function makeCircleShape(radius: number, segments = 64): THREE.Shape {
+  const pts: THREE.Vector2[] = [];
+  for (let i = 0; i < segments; i++) {
+    const angle = (i / segments) * Math.PI * 2;
+    pts.push(new THREE.Vector2(Math.cos(angle) * radius, Math.sin(angle) * radius));
+  }
+  const shape = new THREE.Shape();
+  shape.setFromPoints(pts);
+  return shape;
+}
+
+/**
+ * Punch a Cherry-MX-style plus/cross pocket into a THREE.Shape as a hole.
+ * Vertices are wound CW (negative area) — correct for a hole in a CCW outer shape.
+ * @param totalSize  Overall bounding box of the cross (mm), e.g. 4.18.
+ * @param armWidth   Width of each arm of the cross (mm), e.g. 1.31.
+ */
+function addCrossHole(shape: THREE.Shape, totalSize: number, armWidth: number): void {
+  const h = totalSize / 2;
+  const a = armWidth  / 2;
+  const pts: THREE.Vector2[] = [
+    new THREE.Vector2(-a,  h),
+    new THREE.Vector2( a,  h),
+    new THREE.Vector2( a,  a),
+    new THREE.Vector2( h,  a),
+    new THREE.Vector2( h, -a),
+    new THREE.Vector2( a, -a),
+    new THREE.Vector2( a, -h),
+    new THREE.Vector2(-a, -h),
+    new THREE.Vector2(-a, -a),
+    new THREE.Vector2(-h, -a),
+    new THREE.Vector2(-h,  a),
+    new THREE.Vector2(-a,  a),
+  ];
+  const hole = new THREE.Path();
+  hole.setFromPoints(pts);
+  shape.holes.push(hole);
+}
+
 export function createInnerClickerGeometries(
   svgShapes: THREE.Shape[],
   settings: FidgetSettings,
@@ -220,20 +277,35 @@ export function createInnerClickerGeometries(
     wallsGeo = extrudeShape(createDefaultShape(4), clickerSquareDepth);
   }
 
-  // Actuator boss: cylinder centred in the cavity, starting bossFloorGap mm from
-  // the absolute clicker bottom (which embeds it 1 mm into the solid floor section
-  // for structural anchoring).
-  const bossRadius = bossDiameter / 2;
-  const bossGeo = new THREE.CylinderGeometry(bossRadius, bossRadius, bossHeight, 48);
+  // ── Actuator boss with MX cross pocket ──────────────────────────────────
+  const bossRadius     = bossDiameter / 2;
+  const crossSize      = settings.crossSize      ?? DEFAULT_SETTINGS.crossSize;
+  const crossDepth     = settings.crossDepth     ?? DEFAULT_SETTINGS.crossDepth;
+  const crossArmWidth  = settings.crossArmWidth  ?? DEFAULT_SETTINGS.crossArmWidth;
+
+  // The solid base sits below the cross pocket so the pocket has a closed floor.
+  const bossBaseHeight = Math.max(bossHeight - crossDepth, 0.05);
+  const bossCrossDepth = bossHeight - bossBaseHeight; // actual pocket depth
+
+  // Solid base section (no hole)
+  const bossBaseShape = makeCircleShape(bossRadius, 64);
+  const bossBaseGeo   = extrudeShape(bossBaseShape, bossBaseHeight);
+
+  // Main section: circle with MX cross pocket cut through from top to bottom
+  const bossMainShape = makeCircleShape(bossRadius, 64);
+  addCrossHole(bossMainShape, crossSize, crossArmWidth);
+  const bossMainGeo   = extrudeShape(bossMainShape, bossCrossDepth);
 
   return {
     floor: floorGeo,
     walls: wallsGeo,
-    boss: bossGeo,
+    bossBase: bossBaseGeo,
+    bossMain: bossMainGeo,
     clickerTotalDepth,
     clickerFloorDepth,
     bossFloorGap,
     bossHeight,
+    bossBaseHeight,
   };
 }
 

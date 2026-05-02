@@ -123,7 +123,8 @@ function InnerClickerGroup({
   svgHeight,
   clickerFloorRef,
   clickerWallsRef,
-  bossRef,
+  bossBaseRef,
+  bossMainRef,
   fitCheck,
 }: {
   shapes: THREE.Shape[];
@@ -132,7 +133,8 @@ function InnerClickerGroup({
   svgHeight: number;
   clickerFloorRef: React.RefObject<THREE.Mesh | null>;
   clickerWallsRef: React.RefObject<THREE.Mesh | null>;
-  bossRef: React.RefObject<THREE.Mesh | null>;
+  bossBaseRef: React.RefObject<THREE.Mesh | null>;
+  bossMainRef: React.RefObject<THREE.Mesh | null>;
   fitCheck: boolean;
 }) {
   const geos = useMemo(
@@ -142,7 +144,7 @@ function InnerClickerGroup({
   );
 
   const { totalDepth, innerFillDepth } = settings;
-  const { clickerTotalDepth, clickerFloorDepth, bossFloorGap, bossHeight } = geos;
+  const { clickerTotalDepth, clickerFloorDepth, bossFloorGap, bossHeight, bossBaseHeight } = geos;
 
   // In normal mode the clicker floats beside the shell.
   // In fit-check mode it is positioned to sit exactly inside the recess.
@@ -157,12 +159,14 @@ function InnerClickerGroup({
   ];
   const groupPos = fitCheck ? fitCheckGroupPos : normalGroupPos;
 
-  // Local z origins (geo starts at 0, mesh is centred at -clickerTotalDepth/2)
-  const baseZ  = -clickerTotalDepth / 2;
-  const floorZ = baseZ;                              // solid floor: 0 → clickerFloorDepth
-  const wallsZ = baseZ + clickerFloorDepth;          // walls: clickerFloorDepth → top
-  // Boss: starts bossFloorGap mm from absolute clicker bottom.
-  const bossZ  = baseZ + bossFloorGap + bossHeight / 2;
+  // Local z origins (geo starts at 0, mesh centred at -clickerTotalDepth/2)
+  const baseZ      = -clickerTotalDepth / 2;
+  const floorZ     = baseZ;                        // clicker solid floor
+  const wallsZ     = baseZ + clickerFloorDepth;    // clicker wall section
+  // Boss sits bossFloorGap mm above the absolute clicker bottom.
+  // The two boss pieces are stacked: solid base then main shell (with cross pocket).
+  const bossBaseZ  = baseZ + bossFloorGap;                    // solid base starts here
+  const bossMainZ  = bossBaseZ + bossBaseHeight;              // main shell starts here
 
   return (
     <group position={groupPos}>
@@ -174,8 +178,14 @@ function InnerClickerGroup({
         <primitive object={geos.walls} />
         <meshStandardMaterial color="#10B981" metalness={0.25} roughness={0.45} />
       </mesh>
-      <mesh ref={bossRef} position={[0, 0, bossZ]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
-        <primitive object={geos.boss} />
+      {/* Boss base — solid disk that closes the bottom of the cross pocket */}
+      <mesh ref={bossBaseRef} position={[0, 0, bossBaseZ]} castShadow receiveShadow>
+        <primitive object={geos.bossBase} />
+        <meshStandardMaterial color="#34D399" metalness={0.3} roughness={0.4} />
+      </mesh>
+      {/* Boss main — cylindrical shell with MX cross pocket cut through the top */}
+      <mesh ref={bossMainRef} position={[0, 0, bossMainZ]} castShadow receiveShadow>
+        <primitive object={geos.bossMain} />
         <meshStandardMaterial color="#34D399" metalness={0.3} roughness={0.4} />
       </mesh>
     </group>
@@ -230,7 +240,8 @@ export default function Studio() {
   const innerFillWallsRef = useRef<THREE.Mesh | null>(null);
   const clickerFloorRef = useRef<THREE.Mesh | null>(null);
   const clickerWallsRef = useRef<THREE.Mesh | null>(null);
-  const bossRef = useRef<THREE.Mesh | null>(null);
+  const bossBaseRef = useRef<THREE.Mesh | null>(null);
+  const bossMainRef = useRef<THREE.Mesh | null>(null);
 
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
@@ -284,7 +295,7 @@ export default function Studio() {
   const getMeshGroups = (): MeshGroups => ({
     shell: [outerWallRef, innerFillFloorRef, innerFillPinSectionRef, innerFillWallsRef]
       .map((r) => r.current).filter((m): m is THREE.Mesh => m !== null),
-    clicker: [clickerFloorRef, clickerWallsRef, bossRef]
+    clicker: [clickerFloorRef, clickerWallsRef, bossBaseRef, bossMainRef]
       .map((r) => r.current).filter((m): m is THREE.Mesh => m !== null),
   });
 
@@ -633,6 +644,36 @@ export default function Studio() {
                   unit="mm"
                   onChange={(v) => setSetting("bossFloorGap", v)}
                 />
+                <div className="pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+                  MX cross pocket
+                </div>
+                <SliderRow
+                  label="Cross size"
+                  value={settings.crossSize ?? DEFAULT_SETTINGS.crossSize}
+                  min={2}
+                  max={6}
+                  step={0.01}
+                  unit="mm"
+                  onChange={(v) => setSetting("crossSize", v)}
+                />
+                <SliderRow
+                  label="Cross depth"
+                  value={settings.crossDepth ?? DEFAULT_SETTINGS.crossDepth}
+                  min={0.5}
+                  max={Math.max(0.5, (settings.bossHeight ?? DEFAULT_SETTINGS.bossHeight) - 0.05)}
+                  step={0.01}
+                  unit="mm"
+                  onChange={(v) => setSetting("crossDepth", v)}
+                />
+                <SliderRow
+                  label="Arm width"
+                  value={settings.crossArmWidth ?? DEFAULT_SETTINGS.crossArmWidth}
+                  min={0.8}
+                  max={Math.max(0.8, (settings.crossSize ?? DEFAULT_SETTINGS.crossSize) * 0.9)}
+                  step={0.01}
+                  unit="mm"
+                  onChange={(v) => setSetting("crossArmWidth", v)}
+                />
               </div>
             </div>
 
@@ -786,7 +827,8 @@ export default function Studio() {
                     svgHeight={svgState.height}
                     clickerFloorRef={clickerFloorRef}
                     clickerWallsRef={clickerWallsRef}
-                    bossRef={bossRef}
+                    bossBaseRef={bossBaseRef}
+                    bossMainRef={bossMainRef}
                     fitCheck={fitCheckMode}
                   />
                 </>
