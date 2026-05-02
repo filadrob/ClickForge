@@ -23,7 +23,7 @@ import {
   DEFAULT_SETTINGS,
   type FidgetSettings,
 } from "@/lib/fidgetGeometry";
-import { exportSTL, export3MF } from "@/lib/exporters";
+import { exportSTL, export3MF, exportSTLMerged, export3MFMerged, type MeshGroups } from "@/lib/exporters";
 import {
   Upload,
   Download,
@@ -289,30 +289,48 @@ export default function Studio() {
     }
   };
 
+  const [mergeForExport, setMergeForExport] = useState(false);
+
+  const getMeshGroups = (): MeshGroups => ({
+    shell: [outerWallRef, innerFillFloorRef, innerFillPinSectionRef, innerFillWallsRef]
+      .map((r) => r.current).filter((m): m is THREE.Mesh => m !== null),
+    clicker: [clickerFloorRef, clickerWallsRef, bossRef, pegRef]
+      .map((r) => r.current).filter((m): m is THREE.Mesh => m !== null),
+  });
+
   const getMeshes = (): THREE.Mesh[] => {
-    return [outerWallRef, innerFillFloorRef, innerFillPinSectionRef, innerFillWallsRef, clickerFloorRef, clickerWallsRef, bossRef, pegRef]
-      .map((r) => r.current)
-      .filter((m): m is THREE.Mesh => m !== null);
+    const g = getMeshGroups();
+    return [...g.shell, ...g.clicker];
   };
 
-  const handleExportSTL = () => {
-    const meshes = getMeshes();
-    if (!meshes.length) {
+  const handleExportSTL = async () => {
+    const groups = getMeshGroups();
+    if (!groups.shell.length && !groups.clicker.length) {
       toast({ title: "Upload an SVG first", variant: "destructive" });
       return;
     }
-    exportSTL(meshes);
-    toast({ title: "STL exported" });
+    if (mergeForExport) {
+      await exportSTLMerged(groups);
+      toast({ title: "STL exported — two files in zip" });
+    } else {
+      exportSTL(getMeshes());
+      toast({ title: "STL exported" });
+    }
   };
 
   const handleExport3MF = async () => {
-    const meshes = getMeshes();
-    if (!meshes.length) {
+    const groups = getMeshGroups();
+    if (!groups.shell.length && !groups.clicker.length) {
       toast({ title: "Upload an SVG first", variant: "destructive" });
       return;
     }
-    await export3MF(meshes);
-    toast({ title: "3MF exported" });
+    if (mergeForExport) {
+      await export3MFMerged(groups);
+      toast({ title: "3MF exported — two objects inside" });
+    } else {
+      await export3MF(getMeshes());
+      toast({ title: "3MF exported" });
+    }
   };
 
   const handleSave = async () => {
@@ -682,6 +700,25 @@ export default function Studio() {
                 <Save className="h-4 w-4 mr-2" />
                 {isSaving ? "Saving…" : projectId ? "Update Project" : "Save Project"}
               </Button>
+
+              {/* Merge toggle */}
+              <label className="flex items-center gap-2 cursor-pointer select-none px-1 py-0.5">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded accent-indigo-600"
+                  checked={mergeForExport}
+                  onChange={(e) => setMergeForExport(e.target.checked)}
+                />
+                <span className="text-xs text-muted-foreground leading-tight">
+                  Merge parts on export
+                  <span className="block text-[10px] opacity-70">
+                    {mergeForExport
+                      ? "Shell & clicker exported as separate fused meshes"
+                      : "Each part exported individually"}
+                  </span>
+                </span>
+              </label>
+
               <Button
                 variant="outline"
                 className="w-full"
@@ -689,7 +726,7 @@ export default function Studio() {
                 disabled={!svgState}
               >
                 <Download className="h-4 w-4 mr-2" />
-                Export STL
+                {mergeForExport ? "Export STL (zip)" : "Export STL"}
               </Button>
               <Button
                 variant="outline"
