@@ -204,12 +204,18 @@ export function createInnerClickerGeometries(
   const outerShape = transformToMm(baseShape, scale, svgWidth, svgHeight);
   const clickerShape = offsetShapeInward(outerShape, insetAmount + CLEARANCE);
 
+  // 0.01 mm outward bleed on the floor so it overlaps the walls section
+  // by a tiny amount, preventing the coincident-face gap that slicers mistake
+  // for separate bodies and leave as an artefact between layers.
+  const FLOOR_BLEED = 0.01;
+
   let floorGeo: THREE.BufferGeometry;
   let wallsGeo: THREE.BufferGeometry;
   if (clickerShape) {
-    // Solid floor — no cavity
-    floorGeo = extrudeShape(cloneShape(clickerShape), clickerFloorDepth);
-    // Upper section — switch housing cavity cut from the top
+    // Solid floor — expanded outward by FLOOR_BLEED to close the slicer gap
+    const floorShape = expandShapeOutward(cloneShape(clickerShape), FLOOR_BLEED);
+    floorGeo = extrudeShape(floorShape, clickerFloorDepth);
+    // Upper section — switch housing cavity cut from the top (original size)
     const wallsShape = cloneShape(clickerShape);
     addSquareHole(wallsShape, clickerSquareSize);
     wallsGeo = extrudeShape(wallsShape, clickerSquareDepth);
@@ -313,6 +319,57 @@ function cloneShape(shape: THREE.Shape): THREE.Shape {
   const s = new THREE.Shape();
   s.setFromPoints(pts);
   return s;
+}
+
+/**
+ * Return a new THREE.Shape whose boundary is expanded outward by `amountMm`
+ * using a true edge-normal parallel offset (every edge shifted outward by the
+ * same perpendicular distance).  Used for the clicker floor so it overlaps the
+ * walls section by a hair and eliminates the coincident-face slicer gap.
+ */
+function expandShapeOutward(shape: THREE.Shape, amountMm: number): THREE.Shape {
+  // Sample the boundary and strip the closing duplicate
+  const raw = shape.getPoints(128);
+  let pts = raw.slice(0, raw.length - 1);
+  if (pts.length < 3) return shape;
+
+  const n = pts.length;
+
+  // Compute outward-shifted parallel edges (for CCW polygon, outward normal of
+  // edge a→b is (+ey, -ex)/|e|, the opposite of the inward normal used by insetPolygon)
+  interface ShiftedEdge { px: number; py: number; dx: number; dy: number }
+  const edges: ShiftedEdge[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % n];
+    const ex = b.x - a.x, ey = b.y - a.y;
+    const len = Math.hypot(ex, ey);
+    if (len < 1e-10) continue;
+    // Outward normal for CCW: (+ey, -ex) / len
+    const nx =  ey / len;
+    const ny = -ex / len;
+    edges.push({ px: a.x + nx * amountMm, py: a.y + ny * amountMm, dx: ex / len, dy: ey / len });
+  }
+
+  if (edges.length < 3) return shape;
+
+  // Find intersection of consecutive shifted edges to get new vertices
+  const result: THREE.Vector2[] = [];
+  for (let i = 0; i < edges.length; i++) {
+    const e0 = edges[(i - 1 + edges.length) % edges.length];
+    const e1 = edges[i];
+    const denom = e0.dx * e1.dy - e0.dy * e1.dx;
+    if (Math.abs(denom) < 1e-10) {
+      result.push(new THREE.Vector2(e1.px, e1.py));
+    } else {
+      const t = ((e1.px - e0.px) * e1.dy - (e1.py - e0.py) * e1.dx) / denom;
+      result.push(new THREE.Vector2(e0.px + t * e0.dx, e0.py + t * e0.dy));
+    }
+  }
+
+  const out = new THREE.Shape();
+  out.setFromPoints(result);
+  return out;
 }
 
 function computeScale(s: FidgetSettings, w: number, h: number): { scale: number } {
