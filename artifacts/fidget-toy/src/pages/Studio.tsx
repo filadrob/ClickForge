@@ -450,7 +450,7 @@ export default function Studio() {
                   value={settings.totalDepth}
                   min={10}
                   max={40}
-                  step={0.5}
+                  step={0.01}
                   unit="mm"
                   onChange={(v) => setSetting("totalDepth", v)}
                 />
@@ -459,7 +459,7 @@ export default function Studio() {
                   value={settings.innerFillDepth}
                   min={4}
                   max={settings.totalDepth - 2}
-                  step={0.5}
+                  step={0.01}
                   unit="mm"
                   onChange={(v) => setSetting("innerFillDepth", v)}
                 />
@@ -468,7 +468,7 @@ export default function Studio() {
                   value={settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth}
                   min={2}
                   max={settings.innerFillDepth - 1}
-                  step={0.5}
+                  step={0.01}
                   unit="mm"
                   onChange={(v) => setSetting("keycapPocketDepth", v)}
                 />
@@ -477,7 +477,7 @@ export default function Studio() {
                   value={settings.insetAmount}
                   min={0.5}
                   max={5}
-                  step={0.25}
+                  step={0.01}
                   unit="mm"
                   onChange={(v) => setSetting("insetAmount", v)}
                 />
@@ -486,7 +486,7 @@ export default function Studio() {
                   value={settings.keycapSize}
                   min={10}
                   max={22}
-                  step={0.5}
+                  step={0.01}
                   unit="mm"
                   onChange={(v) => setSetting("keycapSize", v)}
                 />
@@ -516,7 +516,7 @@ export default function Studio() {
                     value={settings.pinHoleDepth ?? DEFAULT_SETTINGS.pinHoleDepth}
                     min={1}
                     max={Math.max(1, (settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth) - 1)}
-                    step={0.1}
+                    step={0.01}
                     unit="mm"
                     onChange={(v) => setSetting("pinHoleDepth", v)}
                   />
@@ -525,7 +525,7 @@ export default function Studio() {
                     value={settings.pinHoleRadius ?? DEFAULT_SETTINGS.pinHoleRadius}
                     min={0}
                     max={0.5}
-                    step={0.05}
+                    step={0.01}
                     unit="mm"
                     onChange={(v) => setSetting("pinHoleRadius", v)}
                   />
@@ -546,7 +546,7 @@ export default function Studio() {
                 value={settings.pegRadius}
                 min={1.5}
                 max={6}
-                step={0.1}
+                step={0.01}
                 unit="mm"
                 onChange={(v) => setSetting("pegRadius", v)}
               />
@@ -746,13 +746,35 @@ function SliderRow({
   unit: string;
   onChange: (v: number) => void;
 }) {
+  const [draft, setDraft] = useState<string | null>(null);
+
+  const commit = (raw: string) => {
+    const n = parseFloat(raw);
+    if (!isNaN(n)) onChange(Math.min(max, Math.max(min, n)));
+    setDraft(null);
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-1">
         <Label className="text-xs">{label}</Label>
-        <span className="text-xs font-mono text-muted-foreground">
-          {(value ?? 0).toFixed(step < 1 ? 1 : 0)} {unit}
-        </span>
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            min={min}
+            max={max}
+            step={step}
+            value={draft ?? (value ?? 0).toFixed(2)}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={(e) => commit(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit((e.target as HTMLInputElement).value);
+              if (e.key === "Escape") setDraft(null);
+            }}
+            className="w-16 text-xs font-mono text-right bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1 py-0.5 text-muted-foreground focus:text-foreground transition-colors"
+          />
+          <span className="text-xs text-muted-foreground">{unit}</span>
+        </div>
       </div>
       <Slider
         min={min}
