@@ -452,15 +452,6 @@ export default function Studio() {
 
               {/* Import dimension controls — always visible so user can set before importing */}
               <div className="mt-3 space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={settings.mirrorX ?? false}
-                    onChange={(e) => setSetting("mirrorX", e.target.checked)}
-                    className="h-4 w-4 rounded accent-primary"
-                  />
-                  <span className="text-sm">Mirror left-right</span>
-                </label>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
                   <Ruler className="h-3 w-3" />
                   Import size
@@ -501,15 +492,26 @@ export default function Studio() {
                 Outer Shell
               </h2>
               <div className="space-y-5">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={settings.flipShell ?? false}
-                    onChange={(e) => setSetting("flipShell", e.target.checked)}
-                    className="h-4 w-4 rounded accent-primary"
-                  />
-                  <span className="text-sm">Flip orientation</span>
-                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={settings.flipShell ?? false}
+                      onChange={(e) => setSetting("flipShell", e.target.checked)}
+                      className="h-4 w-4 rounded accent-primary"
+                    />
+                    <span className="text-sm">Flip</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={settings.mirrorShell ?? false}
+                      onChange={(e) => setSetting("mirrorShell", e.target.checked)}
+                      className="h-4 w-4 rounded accent-primary"
+                    />
+                    <span className="text-sm">Mirror</span>
+                  </label>
+                </div>
                 <SliderRow
                   label="Total depth"
                   value={settings.totalDepth}
@@ -607,15 +609,26 @@ export default function Studio() {
                 Inner Clicker
               </h2>
               <div className="space-y-5">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={settings.flipClicker ?? false}
-                    onChange={(e) => setSetting("flipClicker", e.target.checked)}
-                    className="h-4 w-4 rounded accent-primary"
-                  />
-                  <span className="text-sm">Flip orientation</span>
-                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={settings.flipClicker ?? false}
+                      onChange={(e) => setSetting("flipClicker", e.target.checked)}
+                      className="h-4 w-4 rounded accent-primary"
+                    />
+                    <span className="text-sm">Flip</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={settings.mirrorClicker ?? false}
+                      onChange={(e) => setSetting("mirrorClicker", e.target.checked)}
+                      className="h-4 w-4 rounded accent-primary"
+                    />
+                    <span className="text-sm">Mirror</span>
+                  </label>
+                </div>
                 <SliderRow
                   label="Total thickness"
                   value={settings.clickerTotalDepth ?? DEFAULT_SETTINGS.clickerTotalDepth}

@@ -29,7 +29,8 @@ export interface FidgetSettings {
   // correct side for printing / assembly
   flipShell: boolean;          // flip outer shell upside-down (rotate 180° around X)
   flipClicker: boolean;        // flip inner clicker upside-down (rotate 180° around X)
-  mirrorX: boolean;            // mirror SVG silhouette left-right before generating geometry
+  mirrorShell: boolean;        // mirror outer shell silhouette left-right
+  mirrorClicker: boolean;      // mirror inner clicker silhouette left-right
 }
 
 export const DEFAULT_SETTINGS: FidgetSettings = {
@@ -55,7 +56,8 @@ export const DEFAULT_SETTINGS: FidgetSettings = {
   crossArmWidth: 1.31,
   flipShell: false,
   flipClicker: false,
-  mirrorX: false,
+  mirrorShell: false,
+  mirrorClicker: false,
 };
 
 /**
@@ -140,10 +142,10 @@ export function createOuterShellGeometries(
   const pinDepth    = pinHolesEnabled ? Math.min(pinHoleDepth, pocketDepth - 1) : 0;
   const squareDepth = pocketDepth - pinDepth;
 
-  const mirrorX = settings.mirrorX ?? false;
+  const mirrorShell = settings.mirrorShell ?? false;
 
   // ── Transform outer SVG path to world-space mm coords ──────────────────
-  const outerShape = transformToMm(baseShape, scale, svgWidth, svgHeight, mirrorX);
+  const outerShape = transformToMm(baseShape, scale, svgWidth, svgHeight, mirrorShell);
 
   // ── True geometric inward offset → inner wall boundary ─────────────────
   // insetAmount is the actual wall thickness on every side, regardless of
@@ -158,7 +160,7 @@ export function createOuterShellGeometries(
     cloneShape(outerShape);
 
   // ── 1. Outer wall ring ──────────────────────────────────────────────────
-  const ringShape = transformToMm(baseShape, scale, svgWidth, svgHeight, mirrorX);
+  const ringShape = transformToMm(baseShape, scale, svgWidth, svgHeight, mirrorShell);
   ringShape.holes.push(new THREE.Path(innerShape.getPoints(128)));
   const outerWallGeo = extrudeShape(ringShape, totalDepth);
 
@@ -259,8 +261,8 @@ export function createInnerClickerGeometries(
   // The clicker's outer boundary is the inner wall shape plus 0.3 mm print clearance,
   // so it slides cleanly into the recess without binding.
   const CLEARANCE = 0.3;
-  const mirrorX = settings.mirrorX ?? false;
-  const outerShape = transformToMm(baseShape, scale, svgWidth, svgHeight, mirrorX);
+  const mirrorClicker = settings.mirrorClicker ?? false;
+  const outerShape = transformToMm(baseShape, scale, svgWidth, svgHeight, mirrorClicker);
 
   // For complex concave shapes (e.g. a bunny with a narrow notch between the
   // ears) the full inset+clearance may collapse the shape. Cascade to smaller
