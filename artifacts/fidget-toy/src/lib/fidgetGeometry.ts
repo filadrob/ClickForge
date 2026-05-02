@@ -29,6 +29,7 @@ export interface FidgetSettings {
   // correct side for printing / assembly
   flipShell: boolean;          // flip outer shell upside-down (rotate 180° around X)
   flipClicker: boolean;        // flip inner clicker upside-down (rotate 180° around X)
+  mirrorX: boolean;            // mirror SVG silhouette left-right before generating geometry
 }
 
 export const DEFAULT_SETTINGS: FidgetSettings = {
@@ -54,6 +55,7 @@ export const DEFAULT_SETTINGS: FidgetSettings = {
   crossArmWidth: 1.31,
   flipShell: false,
   flipClicker: false,
+  mirrorX: false,
 };
 
 /**
@@ -138,8 +140,10 @@ export function createOuterShellGeometries(
   const pinDepth    = pinHolesEnabled ? Math.min(pinHoleDepth, pocketDepth - 1) : 0;
   const squareDepth = pocketDepth - pinDepth;
 
+  const mirrorX = settings.mirrorX ?? false;
+
   // ── Transform outer SVG path to world-space mm coords ──────────────────
-  const outerShape = transformToMm(baseShape, scale, svgWidth, svgHeight);
+  const outerShape = transformToMm(baseShape, scale, svgWidth, svgHeight, mirrorX);
 
   // ── True geometric inward offset → inner wall boundary ─────────────────
   // insetAmount is the actual wall thickness on every side, regardless of
@@ -154,7 +158,7 @@ export function createOuterShellGeometries(
     cloneShape(outerShape);
 
   // ── 1. Outer wall ring ──────────────────────────────────────────────────
-  const ringShape = transformToMm(baseShape, scale, svgWidth, svgHeight);
+  const ringShape = transformToMm(baseShape, scale, svgWidth, svgHeight, mirrorX);
   ringShape.holes.push(new THREE.Path(innerShape.getPoints(128)));
   const outerWallGeo = extrudeShape(ringShape, totalDepth);
 
@@ -255,7 +259,8 @@ export function createInnerClickerGeometries(
   // The clicker's outer boundary is the inner wall shape plus 0.3 mm print clearance,
   // so it slides cleanly into the recess without binding.
   const CLEARANCE = 0.3;
-  const outerShape = transformToMm(baseShape, scale, svgWidth, svgHeight);
+  const mirrorX = settings.mirrorX ?? false;
+  const outerShape = transformToMm(baseShape, scale, svgWidth, svgHeight, mirrorX);
 
   // For complex concave shapes (e.g. a bunny with a narrow notch between the
   // ears) the full inset+clearance may collapse the shape. Cascade to smaller
@@ -320,13 +325,16 @@ export function createInnerClickerGeometries(
  * - Scales by `scale` (px → mm).
  * - Re-centres so the shape is centred on the origin.
  * - Flips Y axis (SVG Y-down → Three.js Y-up).
+ * - Optionally mirrors left-right (negates X, then reverses winding so
+ *   ExtrudeGeometry still sees a CCW outer boundary).
  * - Discretises curves to 128 points for high-fidelity offset computation.
  */
 function transformToMm(
   shape: THREE.Shape,
   scale: number,
   svgWidth: number,
-  svgHeight: number
+  svgHeight: number,
+  mirrorX = false
 ): THREE.Shape {
   const cx = (svgWidth  * scale) / 2;
   const cy = (svgHeight * scale) / 2;
@@ -335,9 +343,15 @@ function transformToMm(
   // samples (slice off the last) to avoid a degenerate zero-length closing
   // edge that would corrupt the polygon-offset computation.
   const raw = shape.getPoints(128); // 129 points, last ≈ first for closed paths
-  const pts = raw.slice(0, raw.length - 1).map(
-    (p: THREE.Vector2) => new THREE.Vector2(p.x * scale - cx, -(p.y * scale - cy))
+  let pts = raw.slice(0, raw.length - 1).map(
+    (p: THREE.Vector2) => new THREE.Vector2(
+      mirrorX ? -(p.x * scale - cx) : (p.x * scale - cx),
+      -(p.y * scale - cy)
+    )
   );
+  // Negating X reverses the polygon winding (CCW → CW).  Reversing the point
+  // order restores CCW so ExtrudeGeometry produces outward-facing normals.
+  if (mirrorX) pts = pts.reverse();
   const out = new THREE.Shape();
   out.setFromPoints(pts);
   return out;

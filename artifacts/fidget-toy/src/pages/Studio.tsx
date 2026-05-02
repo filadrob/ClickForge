@@ -452,6 +452,15 @@ export default function Studio() {
 
               {/* Import dimension controls — always visible so user can set before importing */}
               <div className="mt-3 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={settings.mirrorX ?? false}
+                    onChange={(e) => setSetting("mirrorX", e.target.checked)}
+                    className="h-4 w-4 rounded accent-primary"
+                  />
+                  <span className="text-sm">Mirror left-right</span>
+                </label>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
                   <Ruler className="h-3 w-3" />
                   Import size
