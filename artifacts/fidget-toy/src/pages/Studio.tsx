@@ -25,6 +25,7 @@ import {
   createInnerClickerGeometries,
   createKeyRingGeometry,
   validateGeometry,
+  getShellTotalDepth,
   DEFAULT_SETTINGS,
   type FidgetSettings,
   type GeometryWarning,
@@ -140,6 +141,7 @@ function OuterShellGroup({
   innerFillFloorRef,
   innerFillPinSectionRef,
   innerFillWallsRef,
+  innerFillHousingCapRef,
   keyRingRef,
   fitCheck,
   onBounds,
@@ -155,6 +157,7 @@ function OuterShellGroup({
   innerFillFloorRef: React.RefObject<THREE.Mesh | null>;
   innerFillPinSectionRef: React.RefObject<THREE.Mesh | null>;
   innerFillWallsRef: React.RefObject<THREE.Mesh | null>;
+  innerFillHousingCapRef: React.RefObject<THREE.Mesh | null>;
   keyRingRef: React.RefObject<THREE.Mesh | null>;
   fitCheck: boolean;
   onBounds?: (b: { w: number; h: number }) => void;
@@ -184,7 +187,8 @@ function OuterShellGroup({
   // at world z=0 by shifting the group to -totalDepth/2.  When flipped we
   // rotate 180° around X (so local +z becomes world -z) and shift to
   // +totalDepth/2 so the part still straddles world z=0.
-  const groupZ = flip ? settings.totalDepth / 2 : -settings.totalDepth / 2;
+  const shellDepth = getShellTotalDepth(settings);
+  const groupZ = flip ? shellDepth / 2 : -shellDepth / 2;
 
   // Separation must grow with the model so the two parts never overlap.
   // Compute the actual model half-width from the locked dimension + aspect ratio.
@@ -214,6 +218,7 @@ function OuterShellGroup({
       </mesh>
       {isWire && <EdgeWireframe geometry={geos.outerWall} position={[0, 0, geos.zOffsets.outerWall]} color={color} />}
       <MeshHighlightOverlay geometry={geos.outerWall} position={[0, 0, geos.zOffsets.outerWall]} highlighted={hl("shell_outer")} />
+      <MeshHighlightOverlay geometry={geos.outerWallExtension} position={[0, 0, geos.zOffsets.outerWallExtension]} highlighted={hl("shell_extension")} />
 
       {/* Solid floor — never penetrated */}
       <mesh ref={innerFillFloorRef} position={[0, 0, geos.zOffsets.innerFillFloor]} castShadow={!isXray && !isWire} receiveShadow>
@@ -269,6 +274,18 @@ function OuterShellGroup({
       </mesh>
       {isWire && <EdgeWireframe geometry={geos.innerFillWalls} position={[0, 0, geos.zOffsets.innerFillWalls]} color={color} />}
       <MeshHighlightOverlay geometry={geos.innerFillWalls} position={[0, 0, geos.zOffsets.innerFillWalls]} highlighted={hl("shell_walls")} />
+
+      {/* Housing cap — solid fill above pocket when keycapPocketDepth < shellSwitchHousing */}
+      {geos.innerFillHousingCap && (
+        <>
+          <mesh ref={innerFillHousingCapRef} position={[0, 0, geos.zOffsets.innerFillHousingCap]} castShadow={!isXray && !isWire} receiveShadow>
+            <primitive object={geos.innerFillHousingCap} />
+            <meshStandardMaterial color={color} metalness={0.15} roughness={0.55} opacity={isWire ? 0 : isXray ? 0.3 : 1} transparent={isWire || isXray} depthWrite={!isWire && !isXray} />
+          </mesh>
+          {isWire && <EdgeWireframe geometry={geos.innerFillHousingCap} position={[0, 0, geos.zOffsets.innerFillHousingCap]} color={color} />}
+          <MeshHighlightOverlay geometry={geos.innerFillHousingCap} position={[0, 0, geos.zOffsets.innerFillHousingCap]} highlighted={hl("shell_walls")} />
+        </>
+      )}
     </group>
   );
 }
@@ -313,14 +330,16 @@ function InnerClickerGroup({
   // Report actual clicker footprint to parent whenever geometry changes.
   useEffect(() => { onBounds?.(geos.bounds); }, [geos, onBounds]);
 
-  const { totalDepth, innerFillDepth } = settings;
   const { clickerTotalDepth, clickerFloorDepth, bossFloorGap, bossHeight, bossBaseHeight } = geos;
+  const shellDepth = getShellTotalDepth(settings);
+  const shellHousingDepth = (settings.shellSolidFloor ?? DEFAULT_SETTINGS.shellSolidFloor)
+                          + (settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing);
 
   // In normal mode the clicker floats beside the shell.
   // In fit-check mode it is positioned to sit exactly inside the recess.
-  //   Recess bottom (world z) = -totalDepth/2 + innerFillDepth
+  //   Recess bottom (world z) = -shellDepth/2 + shellHousingDepth
   //   Clicker local geo runs 0 → clickerTotalDepth; centre offset = -clickerTotalDepth/2
-  //   → groupZ = -totalDepth/2 + innerFillDepth + clickerTotalDepth/2
+  //   → groupZ = -shellDepth/2 + shellHousingDepth + clickerTotalDepth/2
   const flip = settings.flipClicker ?? false;
 
   // Mirror the shell's dynamic separation so the gap stays consistent.
@@ -333,7 +352,7 @@ function InnerClickerGroup({
   const fitCheckGroupPos: [number, number, number] = [
     0,
     0,
-    -totalDepth / 2 + innerFillDepth + clickerTotalDepth / 2,
+    -shellDepth / 2 + shellHousingDepth + clickerTotalDepth / 2,
   ];
   const groupPos = fitCheck ? fitCheckGroupPos : normalGroupPos;
 
@@ -657,13 +676,14 @@ function ViewCube({
 // ─── Mesh highlight overlay ───────────────────────────────────────────────
 
 type MeshKey =
-  | "shell_outer" | "shell_floor" | "shell_walls" | "shell_pin"
+  | "shell_outer" | "shell_extension" | "shell_floor" | "shell_walls" | "shell_pin"
   | "click_floor" | "click_walls" | "click_boss";
 
 /** Maps each FidgetSettings slider key to the mesh(es) it most directly affects. */
 const SLIDER_HIGHLIGHTS: Partial<Record<keyof FidgetSettings, MeshKey[]>> = {
-  totalDepth:         ["shell_outer"],
-  innerFillDepth:     ["shell_floor", "shell_walls"],
+  shellSolidFloor:    ["shell_floor"],
+  shellSwitchHousing: ["shell_walls", "shell_pin"],
+  shellWallExtension: ["shell_extension"],
   keycapPocketDepth:  ["shell_walls"],
   insetAmount:        ["shell_outer", "shell_floor", "shell_walls"],
   pinHoleDepth:       ["shell_pin"],
@@ -835,14 +855,14 @@ function AutoCamera({
   svgWidth,
   svgHeight,
   lockDimension,
-  totalDepth,
+  shellDepth,
   recenterKey,
 }: {
   targetSizeMm: number;
   svgWidth: number;
   svgHeight: number;
   lockDimension: "width" | "height";
-  totalDepth: number;
+  shellDepth: number;
   recenterKey: number;
 }) {
   const { camera, controls } = useThree();
@@ -858,7 +878,7 @@ function AutoCamera({
     const sceneHalfW  = separationX + modelHalfW;
 
     // Bounding sphere radius with 20 % padding.
-    const sceneRadius = Math.max(sceneHalfW, modelHalfH, totalDepth / 2) * 1.2;
+    const sceneRadius = Math.max(sceneHalfW, modelHalfH, shellDepth / 2) * 1.2;
 
     // FOV is 40°; half-angle = 20°.  Distance needed to fit the scene.
     const fovRad   = (40 * Math.PI) / 180;
@@ -883,7 +903,7 @@ function AutoCamera({
   // controls must be in deps so the effect re-runs once OrbitControls mounts.
   // recenterKey is incremented by the Re-center button to trigger on demand.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetSizeMm, svgWidth, svgHeight, lockDimension, totalDepth, controls, recenterKey]);
+  }, [targetSizeMm, svgWidth, svgHeight, lockDimension, shellDepth, controls, recenterKey]);
 
   return null;
 }
@@ -950,8 +970,8 @@ export default function Studio() {
     const svgBase = settings.lockDimension === "width" ? svgState.width : svgState.height;
     const scale   = svgBase > 0 ? settings.targetSizeMm / svgBase : 1;
     // Models now lie flat (extruded along world Y after scene rotation).
-    // The back face sits at world Y = -totalDepth/2, which is the print-bed floor.
-    const gridY = -(settings.totalDepth / 2);
+    // The back face sits at world Y = -shellDepth/2, which is the print-bed floor.
+    const gridY = -(getShellTotalDepth(settings) / 2);
 
     // Scale grid cell/section density so lines aren't too dense for huge models
     // or too sparse for tiny ones.  Target ~10 cells across the model.
@@ -978,6 +998,7 @@ export default function Studio() {
   const innerFillFloorRef = useRef<THREE.Mesh | null>(null);
   const innerFillPinSectionRef = useRef<THREE.Mesh | null>(null);
   const innerFillWallsRef = useRef<THREE.Mesh | null>(null);
+  const innerFillHousingCapRef = useRef<THREE.Mesh | null>(null);
   const keyRingRef = useRef<THREE.Mesh | null>(null);
   const clickerFloorRef = useRef<THREE.Mesh | null>(null);
   const clickerWallsRef = useRef<THREE.Mesh | null>(null);
@@ -999,9 +1020,31 @@ export default function Studio() {
     setProjectName(p.name);
     setProjectId(p.id);
 
+    const raw = (p.settings as Partial<FidgetSettings & { totalDepth?: number; innerFillDepth?: number }> | null) ?? {};
+
+    // ── Legacy migration ─────────────────────────────────────────────────
+    // Old saved projects stored `totalDepth` + `innerFillDepth` instead of
+    // the three additive components introduced by Task #7.  Derive sensible
+    // equivalents so geometry is preserved on load.
+    const migratedRaw: Partial<FidgetSettings> = { ...raw };
+    if (
+      "totalDepth" in raw && "innerFillDepth" in raw &&
+      !("shellSolidFloor" in raw) && !("shellSwitchHousing" in raw) && !("shellWallExtension" in raw)
+    ) {
+      const legacyTotal = (raw as { totalDepth: number }).totalDepth;
+      const legacyFill  = (raw as { innerFillDepth: number }).innerFillDepth;
+      const kpd = (raw.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth);
+      const housing   = Math.max(3, Math.min(kpd, legacyFill));
+      const floor     = Math.max(0.5, legacyFill - housing);
+      const extension = Math.max(0, legacyTotal - legacyFill);
+      migratedRaw.shellSolidFloor    = floor;
+      migratedRaw.shellSwitchHousing = housing;
+      migratedRaw.shellWallExtension = extension;
+    }
+
     const savedSettings: FidgetSettings = {
       ...DEFAULT_SETTINGS,
-      ...(p.settings as Partial<FidgetSettings> | null ?? {}),
+      ...migratedRaw,
     };
     setSettings(savedSettings);
     setDraftSizeMm(String(savedSettings.targetSizeMm));
@@ -1096,7 +1139,7 @@ export default function Studio() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const getMeshGroups = (): MeshGroups => ({
-    shell: [outerWallRef, innerFillFloorRef, innerFillPinSectionRef, innerFillWallsRef]
+    shell: [outerWallRef, innerFillFloorRef, innerFillPinSectionRef, innerFillWallsRef, innerFillHousingCapRef]
       .map((r) => r.current).filter((m): m is THREE.Mesh => m !== null),
     clicker: [clickerFloorRef, clickerWallsRef, bossBaseRef, bossMainRef]
       .map((r) => r.current).filter((m): m is THREE.Mesh => m !== null),
@@ -1162,7 +1205,7 @@ export default function Studio() {
       const payload = {
         name: projectName,
         svgData: svgState.rawSvg,
-        extrudeDepth: settings.totalDepth,
+        extrudeDepth: getShellTotalDepth(settings),
         keycapSize: settings.keycapSize,
         settings: settings as unknown as FidgetSettingsBlob,
       };
@@ -1418,29 +1461,47 @@ export default function Studio() {
                   />
                 </label>
                 <SliderRow
-                  label="Total depth"
-                  value={settings.totalDepth}
-                  min={10}
-                  max={40}
+                  label="Solid floor"
+                  value={settings.shellSolidFloor ?? DEFAULT_SETTINGS.shellSolidFloor}
+                  min={0.5}
+                  max={10}
                   step={0.01}
                   unit="mm"
-                  onChange={(v) => setSetting("totalDepth", v)}
-                  defaultValue={DEFAULT_SETTINGS.totalDepth}
-                  onReset={() => setSetting("totalDepth", DEFAULT_SETTINGS.totalDepth)}
-                  {...hl(["shell_outer"])}
+                  onChange={(v) => setSetting("shellSolidFloor", v)}
+                  defaultValue={DEFAULT_SETTINGS.shellSolidFloor}
+                  onReset={() => setSetting("shellSolidFloor", DEFAULT_SETTINGS.shellSolidFloor)}
+                  {...hl(["shell_floor"])}
                 />
                 <SliderRow
-                  label="Housing depth"
-                  value={settings.innerFillDepth}
-                  min={4}
-                  max={settings.totalDepth - 2}
+                  label="Switch housing"
+                  value={settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing}
+                  min={3}
+                  max={30}
                   step={0.01}
                   unit="mm"
-                  onChange={(v) => setSetting("innerFillDepth", v)}
-                  defaultValue={DEFAULT_SETTINGS.innerFillDepth}
-                  onReset={() => setSetting("innerFillDepth", DEFAULT_SETTINGS.innerFillDepth)}
-                  {...hl(["shell_floor", "shell_walls"])}
+                  onChange={(v) => setSetting("shellSwitchHousing", v)}
+                  defaultValue={DEFAULT_SETTINGS.shellSwitchHousing}
+                  onReset={() => setSetting("shellSwitchHousing", DEFAULT_SETTINGS.shellSwitchHousing)}
+                  {...hl(["shell_walls", "shell_pin"])}
                 />
+                <SliderRow
+                  label="Wall extension"
+                  value={settings.shellWallExtension ?? DEFAULT_SETTINGS.shellWallExtension}
+                  min={0}
+                  max={30}
+                  step={0.01}
+                  unit="mm"
+                  onChange={(v) => setSetting("shellWallExtension", v)}
+                  defaultValue={DEFAULT_SETTINGS.shellWallExtension}
+                  onReset={() => setSetting("shellWallExtension", DEFAULT_SETTINGS.shellWallExtension)}
+                  {...hl(["shell_extension"])}
+                />
+                <div className="flex items-center justify-between text-xs text-muted-foreground py-0.5">
+                  <span>Total depth</span>
+                  <span className="font-mono font-medium text-foreground">
+                    {getShellTotalDepth(settings).toFixed(1)} mm
+                  </span>
+                </div>
                 <SliderRow
                   label="Wall thickness"
                   value={settings.insetAmount}
@@ -1500,14 +1561,7 @@ export default function Studio() {
                       label="Thickness (Z)"
                       value={settings.keyRingThickness ?? DEFAULT_SETTINGS.keyRingThickness}
                       min={0.5}
-                      max={Math.max(
-                        0.5,
-                        settings.innerFillDepth -
-                          Math.min(
-                            settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth,
-                            settings.innerFillDepth - 1
-                          )
-                      )}
+                      max={Math.max(0.5, settings.shellSolidFloor ?? DEFAULT_SETTINGS.shellSolidFloor)}
                       step={0.1}
                       unit="mm"
                       onChange={(v) => setSetting("keyRingThickness", v)}
@@ -1637,7 +1691,7 @@ export default function Studio() {
                       label="Keycap pocket depth"
                       value={settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth}
                       min={2}
-                      max={settings.innerFillDepth - 1}
+                      max={settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing}
                       step={0.01}
                       unit="mm"
                       onChange={(v) => setSetting("keycapPocketDepth", v)}
@@ -1868,18 +1922,20 @@ export default function Studio() {
               {svgState && (() => {
                 const kpd = settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth;
                 const phd = settings.pinHoleDepth ?? DEFAULT_SETTINGS.pinHoleDepth;
-                const pocketDepth = Math.min(kpd, settings.innerFillDepth - 1);
-                const floorDepth = settings.innerFillDepth - pocketDepth;
+                const shellHousing = settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing;
+                const shellFloor = settings.shellSolidFloor ?? DEFAULT_SETTINGS.shellSolidFloor;
+                const shellExt = settings.shellWallExtension ?? DEFAULT_SETTINGS.shellWallExtension;
+                const pocketDepth = Math.min(kpd, shellHousing - 1);
                 const pinDepth = settings.pinHolesEnabled ? Math.min(phd, pocketDepth - 1) : 0;
                 const squareDepth = pocketDepth - pinDepth;
                 return (
                   <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                    <p>Solid floor: <span className="font-mono font-medium text-foreground">{floorDepth.toFixed(1)} mm</span></p>
+                    <p>Solid floor: <span className="font-mono font-medium text-foreground">{shellFloor.toFixed(1)} mm</span></p>
                     {settings.pinHolesEnabled && (
                       <p>Pin section: <span className="font-mono font-medium text-foreground">{pinDepth.toFixed(1)} mm</span></p>
                     )}
                     <p>Keycap square: <span className="font-mono font-medium text-foreground">{squareDepth.toFixed(1)} mm</span></p>
-                    <p>Clicker recess: <span className="font-mono font-medium text-foreground">{(settings.totalDepth - settings.innerFillDepth).toFixed(1)} mm</span></p>
+                    <p>Clicker recess: <span className="font-mono font-medium text-foreground">{shellExt.toFixed(1)} mm</span></p>
                   </div>
                 );
               })()}
@@ -2045,6 +2101,7 @@ export default function Studio() {
                       innerFillFloorRef={innerFillFloorRef}
                       innerFillPinSectionRef={innerFillPinSectionRef}
                       innerFillWallsRef={innerFillWallsRef}
+                      innerFillHousingCapRef={innerFillHousingCapRef}
                       keyRingRef={keyRingRef}
                       fitCheck={fitCheckMode}
                       onBounds={setShellBounds}
@@ -2092,7 +2149,7 @@ export default function Studio() {
                 svgWidth={svgState.width}
                 svgHeight={svgState.height}
                 lockDimension={settings.lockDimension}
-                totalDepth={settings.totalDepth}
+                shellDepth={getShellTotalDepth(settings)}
                 recenterKey={recenterKey}
               />
             )}

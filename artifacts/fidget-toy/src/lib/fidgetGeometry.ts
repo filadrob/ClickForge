@@ -2,8 +2,10 @@ import * as THREE from "three";
 import { insetPolygon, outsetPolygon } from "./polygonOffset";
 
 export interface FidgetSettings {
-  totalDepth: number;          // outer wall total height (mm), e.g. 22
-  innerFillDepth: number;      // total inner fill block height (pocket + floor), e.g. 12
+  // Outer shell depth — three additive components (total = sum of all three)
+  shellSolidFloor: number;     // solid floor at the very bottom of the shell (mm), e.g. 2
+  shellSwitchHousing: number;  // depth of the switch-housing pocket region (mm), e.g. 10
+  shellWallExtension: number;  // plain wall that extends above the housing pocket (mm), e.g. 10
   keycapPocketDepth: number;   // total pocket depth from top of inner fill (mm), e.g. 10
   insetAmount: number;         // true wall thickness — every interior point is exactly this far from outer wall (mm), e.g. 1.5
   keycapSize: number;          // keycap square pocket side length (mm), e.g. 14
@@ -53,8 +55,9 @@ export interface FidgetSettings {
 }
 
 export const DEFAULT_SETTINGS: FidgetSettings = {
-  totalDepth: 22,
-  innerFillDepth: 12,
+  shellSolidFloor: 2,
+  shellSwitchHousing: 10,
+  shellWallExtension: 10,
   keycapPocketDepth: 10,
   insetAmount: 1.5,
   keycapSize: 14,
@@ -90,16 +93,19 @@ export const DEFAULT_SETTINGS: FidgetSettings = {
 };
 
 /**
- * Pocket cross-section from the CLOSED END (floor surface) upward to the OPENING:
+ * Outer shell depth from the BOTTOM upward:
  *
- *   ┌─────────────────────────────┐  ← z = innerFillDepth (pocket opening, faces clicker)
- *   │   keycap square cavity      │  keycapSquareDepth = keycapPocketDepth − pinHoleDepth
- *   │   (14 × 14 mm aperture)     │
- *   ├─────────────────────────────┤  ← z = floorDepth + pinHoleDepth
- *   │   MX pin holes              │  pinHoleDepth  (e.g. 3 mm)
- *   │   (5 cylinders, no square)  │
- *   ├─────────────────────────────┤  ← z = floorDepth (solid floor surface)
- *   │   solid floor               │  floorDepth = innerFillDepth − keycapPocketDepth
+ *   ┌─────────────────────────────┐  ← z = shellTotalDepth (top of outer wall)
+ *   │   wall extension            │  shellWallExtension (e.g. 10 mm)
+ *   ├─────────────────────────────┤  ← z = shellSolidFloor + shellSwitchHousing
+ *   │   switch housing pocket     │  shellSwitchHousing (e.g. 10 mm)
+ *   │  ┌───────────────────────┐  │
+ *   │  │   keycap square       │  │  keycapPocketDepth (clamped to shellSwitchHousing−1)
+ *   │  ├───────────────────────┤  │
+ *   │  │   MX pin holes        │  │  pinHoleDepth (e.g. 3 mm)
+ *   │  └───────────────────────┘  │
+ *   ├─────────────────────────────┤  ← z = shellSolidFloor (solid floor surface)
+ *   │   solid floor               │  shellSolidFloor (e.g. 2 mm)
  *   └─────────────────────────────┘  ← z = 0  (bottom of toy)
  *
  * Wall geometry uses a true geometric inward offset (not uniform scaling):
@@ -107,16 +113,30 @@ export const DEFAULT_SETTINGS: FidgetSettings = {
  *   the outer SVG path, measured along the local surface normal.
  */
 export interface OuterShellGeometries {
+  /** Full outer wall ring (used for rendering and export). */
   outerWall: THREE.BufferGeometry;
+  /**
+   * Extension-only portion of the outer wall ring — extrudes from the top of
+   * the switch-housing region to the top of the part.  Used only for the
+   * highlight overlay so the "Wall extension" slider can light up just its zone.
+   */
+  outerWallExtension: THREE.BufferGeometry;
   innerFillFloor: THREE.BufferGeometry;
   /** null when pinHolesEnabled = false */
   innerFillPinSection: THREE.BufferGeometry | null;
   innerFillWalls: THREE.BufferGeometry;
+  /**
+   * Solid cap filling the unused housing height above the keycap pocket when
+   * keycapPocketDepth < shellSwitchHousing.  null when they are equal (no gap).
+   */
+  innerFillHousingCap: THREE.BufferGeometry | null;
   zOffsets: {
     outerWall: number;
+    outerWallExtension: number;
     innerFillFloor: number;
     innerFillPinSection: number;
     innerFillWalls: number;
+    innerFillHousingCap: number;
   };
   floorDepth: number;
   /** Actual bounding box of the outer wall's outer boundary (mm). */
@@ -149,6 +169,18 @@ export interface InnerClickerGeometries {
 }
 
 // ---------------------------------------------------------------------------
+// Derived helpers
+// ---------------------------------------------------------------------------
+
+/** Derived total outer shell depth = solid floor + switch housing + wall extension. */
+export function getShellTotalDepth(settings: Pick<FidgetSettings, "shellSolidFloor" | "shellSwitchHousing" | "shellWallExtension">): number {
+  const floor   = settings.shellSolidFloor   ?? DEFAULT_SETTINGS.shellSolidFloor;
+  const housing = settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing;
+  const ext     = settings.shellWallExtension ?? DEFAULT_SETTINGS.shellWallExtension;
+  return floor + housing + ext;
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -161,10 +193,16 @@ export function createOuterShellGeometries(
   const { scale } = computeScale(settings, svgWidth, svgHeight);
 
   const baseShape = svgShapes.length > 0 ? svgShapes[0] : createDefaultShape(40);
-  const {
-    totalDepth, innerFillDepth,
-    keycapSize, pinHolesEnabled,
-  } = settings;
+  const { keycapSize, pinHolesEnabled } = settings;
+
+  // Resolve the three additive depth components (with migration fallbacks).
+  const shellSolidFloor   = settings.shellSolidFloor   ?? DEFAULT_SETTINGS.shellSolidFloor;
+  const shellSwitchHousing = settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing;
+  const shellWallExtension = settings.shellWallExtension ?? DEFAULT_SETTINGS.shellWallExtension;
+
+  const totalDepth = shellSolidFloor + shellSwitchHousing + shellWallExtension;
+  const floorDepth = shellSolidFloor; // explicit solid floor — no longer derived
+
   const keycapPocketDepth = settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth;
   const insetAmount      = settings.insetAmount      ?? DEFAULT_SETTINGS.insetAmount;
   const pinHoleRadius    = settings.pinHoleRadius    ?? DEFAULT_SETTINGS.pinHoleRadius;
@@ -173,8 +211,7 @@ export function createOuterShellGeometries(
   // clearance is handled by the shell pocket.
   const CLEARANCE = settings.clearanceMm ?? DEFAULT_SETTINGS.clearanceMm;
 
-  const pocketDepth = Math.min(keycapPocketDepth, innerFillDepth - 1);
-  const floorDepth  = innerFillDepth - pocketDepth;
+  const pocketDepth = Math.min(keycapPocketDepth, shellSwitchHousing);
   const pinDepth    = pinHolesEnabled ? Math.min(pinHoleDepth, pocketDepth - 1) : 0;
   const squareDepth = pocketDepth - pinDepth;
 
@@ -222,6 +259,15 @@ export function createOuterShellGeometries(
   const shellStats: GeoStat[] = [];
   const outerWallGeo = extrudeShape(ringShape, totalDepth, "shell/outerWall", shellStats);
 
+  // Extension-only ring — same cross-section, extruded only for the wall-extension
+  // height, positioned at the top of the housing region.  Used exclusively for
+  // the highlight overlay so the "Wall extension" slider lights up only its zone.
+  const extRingShape = cloneShape(outerShape);
+  extRingShape.holes.push(new THREE.Path(innerHolePts));
+  const outerWallExtensionGeo = shellWallExtension > 0
+    ? extrudeShape(extRingShape, shellWallExtension, "shell/outerWallExtension", shellStats)
+    : extrudeShape(extRingShape, 0.01, "shell/outerWallExtension", shellStats); // degenerate but non-null
+
   // ── 2. Solid floor — never penetrated ──────────────────────────────────
   const floorShape = cloneShape(innerShape);
   const innerFillFloorGeo = extrudeShape(floorShape, floorDepth, "shell/innerFloor", shellStats);
@@ -242,20 +288,35 @@ export function createOuterShellGeometries(
   addSquareHole(wallsShape, keycapSize, ox, oy);
   const innerFillWallsGeo = extrudeShape(wallsShape, squareDepth, "shell/keycapWalls", shellStats);
 
+  // ── 5. Housing cap — solid section above pocket, up to shellSwitchHousing ─
+  // Guarantees the full housing region is always modelled, even when
+  // keycapPocketDepth < shellSwitchHousing.
+  const housingCapDepth = shellSwitchHousing - pocketDepth;
+  let innerFillHousingCapGeo: THREE.BufferGeometry | null = null;
+  if (housingCapDepth > 1e-4) {
+    const capShape = cloneShape(innerShape);
+    innerFillHousingCapGeo = extrudeShape(capShape, housingCapDepth, "shell/housingCap", shellStats);
+  }
+
   console.log("[fidget-geo] SHELL", shellStats.map(s =>
     `${s.label}:${s.nanCount + s.spikeCount > 0 ? "SPIKE!" : "ok"} v=${s.verts} maxXY=(${s.maxX.toFixed(1)},${s.maxY.toFixed(1)})${s.firstSpike ? " first="+s.firstSpike : ""}`
   ).join(" | "));
 
+  const housingDepth = shellSolidFloor + shellSwitchHousing;
   return {
     outerWall: outerWallGeo,
+    outerWallExtension: outerWallExtensionGeo,
     innerFillFloor: innerFillFloorGeo,
     innerFillPinSection: innerFillPinSectionGeo,
     innerFillWalls: innerFillWallsGeo,
+    innerFillHousingCap: innerFillHousingCapGeo,
     zOffsets: {
       outerWall: 0,
+      outerWallExtension: housingDepth,
       innerFillFloor: 0,
       innerFillPinSection: floorDepth,
       innerFillWalls: floorDepth + pinDepth,
+      innerFillHousingCap: floorDepth + pocketDepth,
     },
     floorDepth,
     // Outer wall's OUTER boundary — the true physical footprint of the shell.
