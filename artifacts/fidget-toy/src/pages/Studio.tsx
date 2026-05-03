@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useMemo, Suspense, useEffect } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls, Grid, Html, Line } from "@react-three/drei";
 import * as THREE from "three";
 import { useLocation, Link } from "wouter";
@@ -259,6 +259,183 @@ function PlaceholderMeshes() {
   );
 }
 
+// ─── ViewCube — orientation gizmo ─────────────────────────────────────────
+
+interface SnapTarget { pos: THREE.Vector3; tgt: THREE.Vector3 }
+
+/** Runs inside Canvas: syncs camera state to refs and applies ViewCube commands. */
+function CameraTracker({
+  stateRef,
+  snapRef,
+  dragRef,
+}: {
+  stateRef: React.MutableRefObject<{ quaternion: THREE.Quaternion; dist: number }>;
+  snapRef: React.MutableRefObject<SnapTarget | null>;
+  dragRef: React.MutableRefObject<{ dx: number; dy: number } | null>;
+}) {
+  const { camera, controls } = useThree();
+  useFrame(() => {
+    stateRef.current.quaternion.copy(camera.quaternion);
+    stateRef.current.dist = camera.position.length();
+
+    const oc = controls as unknown as {
+      target: THREE.Vector3;
+      update: () => void;
+    } | null;
+
+    if (dragRef.current && oc) {
+      const { dx, dy } = dragRef.current;
+      dragRef.current = null;
+      const sph = new THREE.Spherical().setFromVector3(
+        camera.position.clone().sub(oc.target)
+      );
+      sph.theta -= dx;
+      sph.phi = THREE.MathUtils.clamp(sph.phi - dy, 0.05, Math.PI - 0.05);
+      camera.position.copy(
+        new THREE.Vector3().setFromSpherical(sph).add(oc.target)
+      );
+      oc.update();
+    }
+
+    if (snapRef.current && oc) {
+      const snap = snapRef.current;
+      camera.position.lerp(snap.pos, 0.16);
+      oc.target.lerp(snap.tgt, 0.16);
+      oc.update();
+      if (camera.position.distanceTo(snap.pos) < 0.4) {
+        camera.position.copy(snap.pos);
+        oc.target.copy(snap.tgt);
+        oc.update();
+        snapRef.current = null;
+      }
+    }
+  });
+  return null;
+}
+
+const VC_SIZE = 76;
+const VC_HALF = VC_SIZE / 2;
+
+const VC_FACES: {
+  label: string;
+  cssTransform: string;
+  bg: string;
+  dir: string;
+}[] = [
+  { label: "TOP",   cssTransform: `rotateX(-90deg) translateZ(${VC_HALF}px)`,  bg: "rgba(160,155,255,0.93)", dir: "0,1,0" },
+  { label: "BTM",   cssTransform: `rotateX(90deg) translateZ(${VC_HALF}px)`,   bg: "rgba(85,80,175,0.82)",   dir: "0,-1,0" },
+  { label: "FRONT", cssTransform: `translateZ(${VC_HALF}px)`,                   bg: "rgba(135,130,245,0.90)", dir: "0,0,1" },
+  { label: "BACK",  cssTransform: `rotateY(180deg) translateZ(${VC_HALF}px)`,  bg: "rgba(85,80,175,0.78)",   dir: "0,0,-1" },
+  { label: "RIGHT", cssTransform: `rotateY(90deg) translateZ(${VC_HALF}px)`,   bg: "rgba(115,110,225,0.85)", dir: "1,0,0" },
+  { label: "LEFT",  cssTransform: `rotateY(-90deg) translateZ(${VC_HALF}px)`,  bg: "rgba(115,110,225,0.85)", dir: "-1,0,0" },
+];
+
+/** CSS 3D ViewCube — syncs rotation with main camera; click to snap, drag to orbit. */
+function ViewCube({
+  stateRef,
+  snapRef,
+  dragRef,
+}: {
+  stateRef: React.MutableRefObject<{ quaternion: THREE.Quaternion; dist: number }>;
+  snapRef: React.MutableRefObject<SnapTarget | null>;
+  dragRef: React.MutableRefObject<{ dx: number; dy: number } | null>;
+}) {
+  const innerRef = useRef<HTMLDivElement>(null);
+  const rafRef   = useRef<number>(0);
+  const dragState = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+
+  useEffect(() => {
+    const tick = () => {
+      if (innerRef.current) {
+        const q = stateRef.current.quaternion.clone().invert();
+        const m = new THREE.Matrix4().makeRotationFromQuaternion(q);
+        const e = m.elements;
+        // Y-axis flip: CSS Y points down, Three.js Y points up
+        innerRef.current.style.transform =
+          `matrix3d(${e[0]},${-e[1]},${e[2]},0,` +
+          `${-e[4]},${e[5]},${-e[6]},0,` +
+          `${e[8]},${-e[9]},${e[10]},0,` +
+          `0,0,0,1)`;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [stateRef]);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    dragState.current = { x: e.clientX, y: e.clientY, moved: false };
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragState.current) return;
+    const dx = (e.clientX - dragState.current.x) * 0.009;
+    const dy = (e.clientY - dragState.current.y) * 0.009;
+    if (Math.abs(e.clientX - dragState.current.x) > 3 ||
+        Math.abs(e.clientY - dragState.current.y) > 3) {
+      dragState.current.moved = true;
+    }
+    dragRef.current = { dx, dy };
+    dragState.current = { ...dragState.current, x: e.clientX, y: e.clientY };
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (!dragState.current?.moved) {
+      const target = e.target as HTMLElement;
+      const dir = target.dataset.dir ?? (target.parentElement as HTMLElement | null)?.dataset.dir;
+      if (dir) {
+        const [x, y, z] = dir.split(",").map(Number);
+        const dist = stateRef.current.dist || 130;
+        snapRef.current = {
+          pos: new THREE.Vector3(x, y, z).multiplyScalar(dist),
+          tgt: new THREE.Vector3(0, 0, 0),
+        };
+      }
+    }
+    dragState.current = null;
+  };
+
+  return (
+    <div
+      style={{ width: VC_SIZE, height: VC_SIZE, perspective: "260px", cursor: "grab", flexShrink: 0 }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+    >
+      <div
+        ref={innerRef}
+        style={{ width: VC_SIZE, height: VC_SIZE, position: "relative", transformStyle: "preserve-3d" }}
+      >
+        {VC_FACES.map((face) => (
+          <div
+            key={face.label}
+            data-dir={face.dir}
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: face.bg,
+              border: "1px solid rgba(255,255,255,0.15)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 7,
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              color: "rgba(255,255,255,0.95)",
+              transform: face.cssTransform,
+              cursor: "pointer",
+              userSelect: "none",
+            }}
+          >
+            {face.label}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Dimension annotation ─────────────────────────────────────────────────
 // Renders X-width and Z-height dimension callouts around one model footprint.
 // Lives OUTSIDE the rotation group so all positions are world-space.
@@ -439,6 +616,14 @@ export default function Studio() {
   const [showDimensions, setShowDimensions] = useState(true);
   const [recenterKey, setRecenterKey] = useState(0);
   const [shellBounds, setShellBounds] = useState({ w: 0, h: 0 });
+
+  // ViewCube shared state refs (avoids re-renders)
+  const vcStateRef = useRef<{ quaternion: THREE.Quaternion; dist: number }>({
+    quaternion: new THREE.Quaternion(),
+    dist: 130,
+  });
+  const vcSnapRef  = useRef<SnapTarget | null>(null);
+  const vcDragRef  = useRef<{ dx: number; dy: number } | null>(null);
   const [clickerBounds, setClickerBounds] = useState({ w: 0, h: 0 });
   // Draft value for the size input — lets the user finish typing before
   // the 3D scene recalculates.  Committed on blur or Enter.
@@ -1136,17 +1321,9 @@ export default function Studio() {
             </div>
           )}
 
-          {/* ── Fit-check toggle + Re-center + Dimensions ── */}
+          {/* ── Dimensions + Fit-check (top-right) ── */}
           {svgState && (
             <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
-              <button
-                onClick={() => setRecenterKey((k) => k + 1)}
-                className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm"
-                title="Re-center — reset the camera to frame both parts"
-              >
-                <Crosshair className="h-3.5 w-3.5" />
-                Re-center
-              </button>
               {/* Dimensions toggle */}
               <button
                 onClick={() => setShowDimensions((v) => !v)}
@@ -1277,6 +1454,7 @@ export default function Studio() {
               </>
             )}
 
+            <CameraTracker stateRef={vcStateRef} snapRef={vcSnapRef} dragRef={vcDragRef} />
             <OrbitControls makeDefault enablePan enableZoom enableRotate />
           </Canvas>
 
@@ -1308,8 +1486,21 @@ export default function Studio() {
             </>
           )}
 
+          {/* ── ViewCube + Re-center (bottom-left) ── */}
+          <div className="absolute bottom-4 left-4 z-10 flex items-end gap-2">
+            <ViewCube stateRef={vcStateRef} snapRef={vcSnapRef} dragRef={vcDragRef} />
+            <button
+              onClick={() => setRecenterKey((k) => k + 1)}
+              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm mb-0.5"
+              title="Re-center — reset the camera to frame both parts"
+            >
+              <Crosshair className="h-3.5 w-3.5" />
+              Re-center
+            </button>
+          </div>
+
           <div className="absolute bottom-4 right-4 text-xs text-muted-foreground bg-card/80 backdrop-blur px-2 py-1 rounded">
-            Drag to rotate · Scroll to zoom
+            Scroll to zoom · Middle-drag to pan
           </div>
         </main>
       </div>
