@@ -179,6 +179,49 @@ export function parseSVGContent(svgContent: string): ParsedSVG {
 }
 
 /**
+ * Extract the dominant color from an SVG string.
+ * Priority: first non-none fill → first non-none stroke → fallback.
+ * Leverages SVGLoader's built-in CSS / inline-style resolver so that
+ * class-based, inline-style, and attribute-based colours all work.
+ */
+export function extractSvgColor(svgContent: string, fallback = "#a888d8"): string {
+  const loader = new SVGLoader();
+  let data: ReturnType<typeof loader.parse>;
+  try {
+    data = loader.parse(svgContent);
+  } catch {
+    return fallback;
+  }
+
+  const isVisible = (c: string | undefined) =>
+    c && c !== "none" && c !== "transparent" && c !== "";
+
+  // Pass 1 — fills
+  for (const path of data.paths) {
+    const fill = (path.userData as { style?: { fill?: string } } | undefined)
+      ?.style?.fill;
+    if (isVisible(fill)) {
+      try {
+        return `#${new THREE.Color(fill!).getHexString()}`;
+      } catch { /* invalid colour string — skip */ }
+    }
+  }
+
+  // Pass 2 — strokes
+  for (const path of data.paths) {
+    const stroke = (path.userData as { style?: { stroke?: string } } | undefined)
+      ?.style?.stroke;
+    if (isVisible(stroke)) {
+      try {
+        return `#${new THREE.Color(stroke!).getHexString()}`;
+      } catch { /* invalid colour string — skip */ }
+    }
+  }
+
+  return fallback;
+}
+
+/**
  * Create a square hole shape (for the keycap negative space)
  * centered at the given position with the given size.
  */

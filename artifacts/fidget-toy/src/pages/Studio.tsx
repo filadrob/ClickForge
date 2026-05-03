@@ -16,7 +16,7 @@ import {
   getListProjectsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { parseSVGContent } from "@/lib/svgParser";
+import { parseSVGContent, extractSvgColor } from "@/lib/svgParser";
 import {
   createOuterShellGeometries,
   createInnerClickerGeometries,
@@ -40,6 +40,71 @@ import {
   HelpCircle,
   Crosshair,
 } from "lucide-react";
+
+// ─── Colour utilities ─────────────────────────────────────────────────────
+
+/** Shift the HSL lightness of a 6-char hex colour by `deltaPercent` (−100…100). */
+function adjustLightness(hex: string, deltaPercent: number): string {
+  const full =
+    hex.length === 4
+      ? `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`
+      : hex;
+  const r = parseInt(full.slice(1, 3), 16) / 255;
+  const g = parseInt(full.slice(3, 5), 16) / 255;
+  const b = parseInt(full.slice(5, 7), 16) / 255;
+
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r)      h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else                h = ((r - g) / d + 4) / 6;
+  }
+
+  const newL = Math.max(0, Math.min(1, l + deltaPercent / 100));
+  const hue2rgb = (p: number, q: number, t: number) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  let nr, ng, nb;
+  if (s === 0) {
+    nr = ng = nb = newL;
+  } else {
+    const q = newL < 0.5 ? newL * (1 + s) : newL + s - newL * s;
+    const p = 2 * newL - q;
+    nr = hue2rgb(p, q, h + 1 / 3);
+    ng = hue2rgb(p, q, h);
+    nb = hue2rgb(p, q, h - 1 / 3);
+  }
+  const toHex = (n: number) => Math.round(n * 255).toString(16).padStart(2, "0");
+  return `#${toHex(nr)}${toHex(ng)}${toHex(nb)}`;
+}
+
+/**
+ * Derive the outer-shell colour from the clicker colour.
+ * Darkens by 20% unless the colour is already very dark (lightness < 0.20),
+ * in which case it lightens by 20% instead.
+ */
+function deriveShellColor(clickerHex: string): string {
+  const full =
+    clickerHex.length === 4
+      ? `#${clickerHex[1]}${clickerHex[1]}${clickerHex[2]}${clickerHex[2]}${clickerHex[3]}${clickerHex[3]}`
+      : clickerHex;
+  const r = parseInt(full.slice(1, 3), 16) / 255;
+  const g = parseInt(full.slice(3, 5), 16) / 255;
+  const b = parseInt(full.slice(5, 7), 16) / 255;
+  const l = (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
+  return adjustLightness(clickerHex, l < 0.20 ? 20 : -20);
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 
 interface ParsedSVGState {
   shapes: THREE.Shape[];
@@ -793,6 +858,12 @@ export default function Studio() {
           fileName,
         });
         setProjectName(fileName.replace(/\.svg$/i, ""));
+
+        // Derive preview colours from the SVG's own fill/stroke palette
+        const clickerColor = extractSvgColor(content);
+        const shellColor   = deriveShellColor(clickerColor);
+        setSettings((prev) => ({ ...prev, clickerColor, shellColor }));
+
         toast({
           title: "SVG loaded",
           description: `${parsed.shapes.length} shape(s) · ${parsed.width.toFixed(0)}×${parsed.height.toFixed(0)} px`,
