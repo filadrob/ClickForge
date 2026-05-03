@@ -85,6 +85,46 @@ function floodFillBackground(imageData: ImageData, tolerance: number): ImageData
   return new ImageData(result, width, height);
 }
 
+function trimTransparentBorder(imageData: ImageData): ImageData {
+  const { data, width, height } = imageData;
+  let left = width;
+  let right = -1;
+  let top = height;
+  let bottom = -1;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (data[(y * width + x) * 4 + 3] > 0) {
+        left = Math.min(left, x);
+        right = Math.max(right, x);
+        top = Math.min(top, y);
+        bottom = Math.max(bottom, y);
+      }
+    }
+  }
+
+  if (right < left || bottom < top) {
+    return imageData;
+  }
+
+  const cropWidth = right - left + 1;
+  const cropHeight = bottom - top + 1;
+  const cropped = new Uint8ClampedArray(cropWidth * cropHeight * 4);
+
+  for (let y = 0; y < cropHeight; y++) {
+    for (let x = 0; x < cropWidth; x++) {
+      const srcIndex = ((top + y) * width + (left + x)) * 4;
+      const dstIndex = (y * cropWidth + x) * 4;
+      cropped[dstIndex] = data[srcIndex];
+      cropped[dstIndex + 1] = data[srcIndex + 1];
+      cropped[dstIndex + 2] = data[srcIndex + 2];
+      cropped[dstIndex + 3] = data[srcIndex + 3];
+    }
+  }
+
+  return new ImageData(cropped, cropWidth, cropHeight);
+}
+
 // ---------------------------------------------------------------------------
 // Load image → ImageData (with optional bg removal)
 // ---------------------------------------------------------------------------
@@ -111,7 +151,10 @@ async function loadImageData(
       ctx.fillRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
       let imageData = ctx.getImageData(0, 0, w, h);
-      if (removeBackground) imageData = floodFillBackground(imageData, bgTolerance);
+      if (removeBackground) {
+        imageData = floodFillBackground(imageData, bgTolerance);
+        imageData = trimTransparentBorder(imageData);
+      }
       resolve(imageData);
     };
     img.onerror = reject;
