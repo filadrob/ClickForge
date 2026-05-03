@@ -16,8 +16,7 @@ function isInvisibleRect(el: Element): boolean {
   const stroke = (el.getAttribute("stroke") ?? "").trim();
   const sw     = parseFloat(el.getAttribute("stroke-width") ?? "0");
 
-  // Also check inline style overrides
-  const style = (el.getAttribute("style") ?? "");
+  const style       = (el.getAttribute("style") ?? "");
   const styleFill   = style.match(/(?:^|;)\s*fill\s*:\s*([^;]+)/i)?.[1]?.trim() ?? "";
   const styleStroke = style.match(/(?:^|;)\s*stroke\s*:\s*([^;]+)/i)?.[1]?.trim() ?? "";
   const styleSW     = parseFloat(style.match(/(?:^|;)\s*stroke-width\s*:\s*([^;]+)/i)?.[1] ?? "0");
@@ -32,12 +31,60 @@ function isInvisibleRect(el: Element): boolean {
   return noFill && noStroke;
 }
 
+/**
+ * Wrap all direct children of `svgEl` in a new <g> with the given SVG transform,
+ * then update the viewBox to "0 0 w h" (removing explicit width/height so the
+ * viewBox is the sole size authority).
+ */
+function wrapAndReframe(
+  doc: Document,
+  svgEl: Element,
+  tx: number,
+  ty: number,
+  w: number,
+  h: number,
+): void {
+  const NS = "http://www.w3.org/2000/svg";
+  const g  = doc.createElementNS(NS, "g");
+  g.setAttribute("transform", `translate(${tx} ${ty})`);
+
+  // Move every existing child node into the new <g>
+  while (svgEl.firstChild) g.appendChild(svgEl.firstChild);
+  svgEl.appendChild(g);
+
+  svgEl.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svgEl.removeAttribute("width");
+  svgEl.removeAttribute("height");
+}
+
+/** Run SVGLoader on a serialized SVG string and return all shapes. */
+function parseSvgString(svg: string): THREE.Shape[] {
+  const loader = new SVGLoader();
+  const data   = loader.parse(svg);
+  const shapes: THREE.Shape[] = [];
+  for (const path of data.paths) shapes.push(...SVGLoader.createShapes(path));
+  return shapes;
+}
+
+/** Compute the tight axis-aligned bounding box of all shape points. */
+function shapeBounds(shapes: THREE.Shape[]): { minX: number; minY: number; w: number; h: number } | null {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const shape of shapes) {
+    for (const pt of shape.getPoints(128)) {
+      if (pt.x < minX) minX = pt.x;
+      if (pt.y < minY) minY = pt.y;
+      if (pt.x > maxX) maxX = pt.x;
+      if (pt.y > maxY) maxY = pt.y;
+    }
+  }
+  return isFinite(minX) ? { minX, minY, w: maxX - minX, h: maxY - minY } : null;
+}
+
 export function parseSVGContent(svgContent: string): ParsedSVG {
-  // ── 1. Strip invisible artboard rects before parsing ───────────────────
-  // Illustrator / Figma / Affinity often emit a <rect> that spans the
-  // artboard (fill="none", no stroke) as a bounding-box placeholder.
-  // These are NOT visual content — strip them before anything else so they
-  // don't inflate the bounding box.
+  // ── 1. Parse to DOM and strip invisible artboard rects ─────────────────
+  // Illustrator / Figma / Affinity emit <rect fill="none"> spanning the entire
+  // artboard as a bounding-box placeholder.  Strip them first so they don't
+  // inflate the bounding box calculation.
   const domParser = new DOMParser();
   const doc       = domParser.parseFromString(svgContent, "image/svg+xml");
   const svgEl     = doc.querySelector("svg");
@@ -48,91 +95,79 @@ export function parseSVGContent(svgContent: string): ParsedSVG {
     }
   }
 
-  const cleanedSvg = new XMLSerializer().serializeToString(doc);
-
-  // ── 2. Parse visible paths with Three.js SVGLoader ─────────────────────
-  const loader = new SVGLoader();
-  const data   = loader.parse(cleanedSvg);
-
-  const rawShapes: THREE.Shape[] = [];
-  for (const path of data.paths) {
-    rawShapes.push(...SVGLoader.createShapes(path));
-  }
-
-  // ── 3. Fallback dimensions from viewBox / width+height ─────────────────
-  // Used only when there is no visible content at all.
-  let fallbackW = 100, fallbackH = 100;
+  // ── 2. Read the original viewBox (for fallback and origin normalisation) ─
+  let vbX = 0, vbY = 0, vbW = 100, vbH = 100;
   if (svgEl) {
     const vb = svgEl.getAttribute("viewBox");
     if (vb) {
-      const parts = vb.split(/[\s,]+/).map(Number);
-      if (parts.length === 4) { fallbackW = parts[2]; fallbackH = parts[3]; }
+      const p = vb.split(/[\s,]+/).map(Number);
+      if (p.length === 4) { [vbX, vbY, vbW, vbH] = p; }
     } else {
       const w = parseFloat(svgEl.getAttribute("width")  ?? "100");
       const h = parseFloat(svgEl.getAttribute("height") ?? "100");
-      if (!isNaN(w)) fallbackW = w;
-      if (!isNaN(h)) fallbackH = h;
+      if (!isNaN(w)) vbW = w;
+      if (!isNaN(h)) vbH = h;
     }
   }
 
-  if (rawShapes.length === 0) {
-    return { shapes: rawShapes, width: fallbackW, height: fallbackH };
+  // ── 3. Pass 1 — normalise the viewBox origin to (0, 0) ─────────────────
+  // SVGLoader's behaviour with a non-zero viewBox origin (e.g. "5.2 8.1 640 100")
+  // is implementation-dependent: it may or may not subtract the origin before
+  // emitting shape coordinates.  To avoid that ambiguity entirely we translate
+  // the content in the DOM by (-vbX, -vbY) and rewrite the viewBox to start
+  // at (0, 0).  After this transform, SVGLoader's output coordinate space and
+  // the SVG DOM coordinate space are guaranteed to share the same origin.
+  if (svgEl && (vbX !== 0 || vbY !== 0)) {
+    wrapAndReframe(doc, svgEl, -vbX, -vbY, vbW, vbH);
   }
 
-  // ── 4. Compute tight bounding box across all visible shape points ───────
-  // Sample at 128 to match the downstream fidgetGeometry.ts pipeline which
-  // also calls shape.getPoints(128).  Using the same resolution avoids
-  // creating over-dense LineCurve polylines (Three.js LineCurves return all
-  // their endpoints regardless of the `divisions` arg, so 256 sample points
-  // would double the vertex count compared to 128).
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const shape of rawShapes) {
-    for (const pt of shape.getPoints(128)) {
-      if (pt.x < minX) minX = pt.x;
-      if (pt.y < minY) minY = pt.y;
-      if (pt.x > maxX) maxX = pt.x;
-      if (pt.y > maxY) maxY = pt.y;
-    }
+  const pass1Svg    = new XMLSerializer().serializeToString(doc);
+  const pass1Shapes = parseSvgString(pass1Svg);
+
+  if (pass1Shapes.length === 0) {
+    return { shapes: [], width: vbW, height: vbH };
   }
 
-  if (!isFinite(minX)) {
-    return { shapes: rawShapes, width: fallbackW, height: fallbackH };
+  // ── 4. Compute the tight content bounding box ───────────────────────────
+  // After Pass 1 the SVG has a (0,0) viewBox origin, so SVGLoader output
+  // coordinates align with DOM user-unit coordinates.  The tight bbox
+  // (minX, minY) is therefore a valid SVG DOM translate value.
+  const bounds = shapeBounds(pass1Shapes);
+  if (!bounds) {
+    return { shapes: pass1Shapes, width: vbW, height: vbH };
   }
 
-  const tightW = maxX - minX;
-  const tightH = maxY - minY;
+  const { minX, minY, w: tightW, h: tightH } = bounds;
 
-  // ── 5. Translate shapes so tight bbox origin → (0, 0) ──────────────────
-  // transformToMm in fidgetGeometry.ts centres using (svgWidth/2, svgHeight/2)
-  // as the shape's centre.  After translation, (tightW/2, tightH/2) is the
-  // true content centre, so the existing formula works correctly without any
-  // changes to the geometry pipeline.
-  // Using getPoints(128) keeps the translated shape at 128 segments — matching
-  // the downstream sampling resolution and avoiding vertex-count doubling.
-  const shapes = rawShapes.map(shape => {
-    const outerPts = shape.getPoints(128).map(
-      (p: THREE.Vector2) => new THREE.Vector2(p.x - minX, p.y - minY)
-    );
-    const s = new THREE.Shape();
-    s.setFromPoints(outerPts);
+  // If the content already starts exactly at (0, 0) we can skip Pass 2.
+  const needsShift = minX !== 0 || minY !== 0;
 
-    for (const hole of shape.holes) {
-      const holePts = hole.getPoints(128).map(
-        (p: THREE.Vector2) => new THREE.Vector2(p.x - minX, p.y - minY)
-      );
-      const h = new THREE.Path();
-      h.setFromPoints(holePts);
-      s.holes.push(h);
-    }
-    return s;
-  });
+  if (!needsShift) {
+    return { shapes: pass1Shapes, width: tightW, height: tightH };
+  }
 
-  return { shapes, width: tightW, height: tightH };
+  // ── 5. Pass 2 — translate content so tight bbox origin → (0, 0) ─────────
+  // Wrap the Pass-1 DOM (which already has the viewBox-origin correction) in
+  // another <g translate(-minX, -minY)> and update the viewBox to the tight
+  // dimensions.  This is done in the DOM so that SVGLoader receives clean
+  // (0,0)-origin input and produces shapes directly in [0,tightW]×[0,tightH]
+  // without any post-processing of shape coordinates.
+  const svgEl2 = doc.querySelector("svg")!;
+  wrapAndReframe(doc, svgEl2, -minX, -minY, tightW, tightH);
+
+  const pass2Svg    = new XMLSerializer().serializeToString(doc);
+  const pass2Shapes = parseSvgString(pass2Svg);
+
+  return {
+    shapes: pass2Shapes.length > 0 ? pass2Shapes : pass1Shapes,
+    width:  tightW,
+    height: tightH,
+  };
 }
 
 /**
  * Create a square hole shape (for the keycap negative space)
- * centered at the given position with the given size
+ * centered at the given position with the given size.
  */
 export function createSquareHole(centerX: number, centerY: number, size: number): THREE.Path {
   const half = size / 2;
@@ -146,7 +181,7 @@ export function createSquareHole(centerX: number, centerY: number, size: number)
 }
 
 /**
- * Create a circle shape for the peg
+ * Create a circle shape for the peg.
  */
 export function createCircle(centerX: number, centerY: number, radius: number): THREE.Shape {
   const shape = new THREE.Shape();
