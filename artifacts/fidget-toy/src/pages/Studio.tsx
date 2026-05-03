@@ -40,7 +40,6 @@ import {
   HelpCircle,
   Crosshair,
   Scan,
-  Eye,
   Mouse,
   MoveHorizontal,
 } from "lucide-react";
@@ -1629,19 +1628,6 @@ export default function Studio() {
                 <Scan className="h-3.5 w-3.5" />
                 Wireframe
               </button>
-              {/* X-ray toggle */}
-              <button
-                onClick={() => setViewMode((v) => v === "xray" ? "solid" : "xray")}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${
-                  viewMode === "xray"
-                    ? "bg-violet-600/90 border-violet-500 text-white shadow-lg"
-                    : "bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm"
-                }`}
-                title="Toggle x-ray view — see through the geometry"
-              >
-                <Eye className="h-3.5 w-3.5" />
-                X-Ray
-              </button>
               <button
                 onClick={() => setFitCheckMode((v) => !v)}
                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${
@@ -1659,6 +1645,17 @@ export default function Studio() {
                   Outer shell ghosted · clicker seated in recess
                 </span>
               )}
+              {/* ── Controls hint — pinned below the toolbar ── */}
+              <div className="flex flex-col items-end gap-1 text-[10px] text-white/30 pointer-events-none select-none mt-1">
+                <div className="flex items-center gap-1.5">
+                  <Mouse className="h-3 w-3" />
+                  Scroll to zoom
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <MoveHorizontal className="h-3 w-3" />
+                  Middle-drag to pan
+                </div>
+              </div>
             </div>
           )}
 
@@ -1821,17 +1818,6 @@ export default function Studio() {
             </button>
           </div>
 
-          {/* ── Scroll/pan hints (bottom-right) ── */}
-          <div className="absolute bottom-8 right-6 flex flex-col items-end gap-1.5 text-[11px] text-white/35 pointer-events-none select-none">
-            <div className="flex items-center gap-1.5">
-              <Mouse className="h-3.5 w-3.5" />
-              Scroll to zoom
-            </div>
-            <div className="flex items-center gap-1.5">
-              <MoveHorizontal className="h-3.5 w-3.5" />
-              Middle-drag to pan
-            </div>
-          </div>
         </main>
       </div>
     </div>
