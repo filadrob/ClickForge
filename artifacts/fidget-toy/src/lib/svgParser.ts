@@ -35,6 +35,13 @@ function isInvisibleRect(el: Element): boolean {
  * Wrap all direct children of `svgEl` in a new <g> with the given SVG transform,
  * then update the viewBox to "0 0 w h" (removing explicit width/height so the
  * viewBox is the sole size authority).
+ *
+ * <defs> elements are intentionally kept as direct children of <svg> rather
+ * than moved into the <g>.  SVGLoader (and browsers) process <defs> for CSS
+ * styles only when they are a direct child of the root <svg> element.  Moving
+ * <defs> inside a <g> can cause style lookups to fail, which would reset
+ * `fill: none` paths to the SVG default fill (black) or silently break class-
+ * based style resolution.
  */
 function wrapAndReframe(
   doc: Document,
@@ -48,8 +55,14 @@ function wrapAndReframe(
   const g  = doc.createElementNS(NS, "g");
   g.setAttribute("transform", `translate(${tx} ${ty})`);
 
-  // Move every existing child node into the new <g>
-  while (svgEl.firstChild) g.appendChild(svgEl.firstChild);
+  // Collect children to move — keep <defs> at the SVG root so CSS styles
+  // defined inside them remain accessible to SVGLoader's style resolver.
+  const toMove: ChildNode[] = [];
+  for (const child of Array.from(svgEl.childNodes)) {
+    const tag = (child as Element).tagName?.toLowerCase?.() ?? "";
+    if (tag !== "defs") toMove.push(child);
+  }
+  for (const child of toMove) g.appendChild(child);
   svgEl.appendChild(g);
 
   svgEl.setAttribute("viewBox", `0 0 ${w} ${h}`);

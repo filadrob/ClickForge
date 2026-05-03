@@ -189,12 +189,31 @@ function removeSelfIntersections(pts: THREE.Vector2[]): THREE.Vector2[] {
     if (!cross) break; // Clean — done.
 
     const { i, j, pt } = cross;
-    // Remove vertices i+1 … j (the collapsed loop) and insert the crossing pt.
-    const next = [
+
+    // Two candidate portions created by shortcutting at the crossing:
+    //   portionA = everything OUTSIDE the [i+1..j] loop (before + after)
+    //   portionB = everything INSIDE the [i+1..j] loop
+    //
+    // For a concave shape whose inset collapses an indentation, the crossing
+    // often falls near the start/end of the polygon (low i, high j).  In that
+    // case portionA is tiny (just the collapsed sliver) while portionB is the
+    // actual large outer body.  Always keep the portion with the larger CCW
+    // (positive) area so we preserve the main body regardless of where the
+    // crossing falls.
+    const portionA: THREE.Vector2[] = [
       ...current.slice(0, i + 1),
       pt,
       ...current.slice(j + 1),
     ];
+    const portionB: THREE.Vector2[] = [
+      pt,
+      ...current.slice(i + 1, j + 1),
+    ];
+
+    const areaA = portionA.length >= 3 ? signedArea(portionA) : -Infinity;
+    const areaB = portionB.length >= 3 ? signedArea(portionB) : -Infinity;
+
+    const next = areaA >= areaB ? portionA : portionB;
     if (next.length < 3) return [];
     current = next;
   }
