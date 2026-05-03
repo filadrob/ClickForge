@@ -22,9 +22,13 @@ export type MeshGroups = {
  * The mesh's geometry has already been baked to world space, rotated to the
  * slicer Z-up convention, and translated so the assembly's minimum Z = 0.
  */
+type ExportPartKind = "shell" | "keyRing" | "clicker" | "colorLayer";
+
 type ExportPart = {
   name: string;
   mesh: THREE.Mesh;
+  /** Source group this part came from, used for robust partitioning. */
+  kind: ExportPartKind;
   /** Optional 6-char hex color, e.g. "#ff8800". */
   color?: string;
 };
@@ -68,25 +72,40 @@ function bakeAndOrientGeometry(mesh: THREE.Mesh): THREE.BufferGeometry {
  * per-part material info (3MF basematerials, OBJ vertex colors).
  */
 function buildPartsFromGroups(groups: MeshGroups): ExportPart[] {
-  type Pending = { name: string; geo: THREE.BufferGeometry; color?: string };
+  type Pending = {
+    name: string;
+    geo: THREE.BufferGeometry;
+    kind: ExportPartKind;
+    color?: string;
+  };
   const pending: Pending[] = [];
 
   groups.shell.forEach((m, i) =>
-    pending.push({ name: m.name || `shell_${i + 1}`, geo: bakeAndOrientGeometry(m) }),
+    pending.push({
+      name: m.name || `shell_${i + 1}`,
+      geo: bakeAndOrientGeometry(m),
+      kind: "shell",
+    }),
   );
   if (groups.keyRing) {
     pending.push({
       name: groups.keyRing.name || "key_ring",
       geo: bakeAndOrientGeometry(groups.keyRing),
+      kind: "keyRing",
     });
   }
   groups.clicker.forEach((m, i) =>
-    pending.push({ name: m.name || `clicker_${i + 1}`, geo: bakeAndOrientGeometry(m) }),
+    pending.push({
+      name: m.name || `clicker_${i + 1}`,
+      geo: bakeAndOrientGeometry(m),
+      kind: "clicker",
+    }),
   );
   (groups.colorLayers ?? []).forEach((c, i) =>
     pending.push({
       name: c.name || `color_layer_${i + 1}`,
       geo: bakeAndOrientGeometry(c.mesh),
+      kind: "colorLayer",
       color: c.color,
     }),
   );
@@ -112,7 +131,7 @@ function buildPartsFromGroups(groups: MeshGroups): ExportPart[] {
   return pending.map((p) => {
     const mesh = new THREE.Mesh(p.geo);
     mesh.name = p.name;
-    return { name: p.name, mesh, color: p.color };
+    return { name: p.name, mesh, kind: p.kind, color: p.color };
   });
 }
 
@@ -152,14 +171,13 @@ export async function exportSTLMerged(groups: MeshGroups): Promise<void> {
   const zip = new JSZip();
 
   // Build everything together first so the Z-floor lift is applied across
-  // both groups consistently.
+  // both groups consistently.  Partition by the explicit `kind` tag rather
+  // than by name so user-supplied mesh names can never misclassify a part.
   const parts = buildPartsFromGroups({ ...groups, colorLayers: [] });
-  const shellNames = new Set<string>();
-  groups.shell.forEach((m, i) => shellNames.add(m.name || `shell_${i + 1}`));
-  if (groups.keyRing) shellNames.add(groups.keyRing.name || "key_ring");
-
-  const shellParts = parts.filter((p) => shellNames.has(p.name));
-  const clickerParts = parts.filter((p) => !shellNames.has(p.name));
+  const shellParts = parts.filter(
+    (p) => p.kind === "shell" || p.kind === "keyRing",
+  );
+  const clickerParts = parts.filter((p) => p.kind === "clicker");
 
   if (shellParts.length > 0) {
     const scene = new THREE.Scene();
