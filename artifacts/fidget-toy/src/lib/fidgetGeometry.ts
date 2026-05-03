@@ -35,6 +35,9 @@ export interface FidgetSettings {
   flipClicker: boolean;        // flip inner clicker upside-down (rotate 180° around X)
   mirrorShell: boolean;        // mirror outer shell silhouette left-right
   mirrorClicker: boolean;      // mirror inner clicker silhouette left-right
+  // When true the SVG silhouette is used as the inner clicker body and the
+  // outer shell is computed by expanding it outward by `insetAmount`.
+  svgIsClickerShape: boolean;
   // Preview colours (hex strings, e.g. "#6C63FF")
   shellColor: string;
   clickerColor: string;
@@ -67,6 +70,7 @@ export const DEFAULT_SETTINGS: FidgetSettings = {
   flipClicker: false,
   mirrorShell: false,
   mirrorClicker: false,
+  svgIsClickerShape: false,
   shellColor: "#6C63FF",
   clickerColor: "#10B981",
 };
@@ -158,24 +162,35 @@ export function createOuterShellGeometries(
   const squareDepth = pocketDepth - pinDepth;
 
   const mirrorShell = settings.mirrorShell ?? false;
+  const svgIsClickerShape = settings.svgIsClickerShape ?? false;
 
-  // ── Transform outer SVG path to world-space mm coords ──────────────────
-  const outerShape = transformToMm(baseShape, scale, svgWidth, svgHeight, mirrorShell);
+  // ── Transform SVG path to world-space mm coords ─────────────────────────
+  const svgShape = transformToMm(baseShape, scale, svgWidth, svgHeight, mirrorShell);
 
-  // ── True geometric inward offset → inner wall boundary ─────────────────
-  // insetAmount is the actual wall thickness on every side, regardless of
-  // how irregular / concave the SVG outline is.
-  // For complex concave shapes (e.g. a bunny with a narrow notch between the
-  // ears) the full inset may collapse the shape. Cascade to smaller offsets
-  // rather than falling back to a tiny 4 mm placeholder.
-  const innerShape: THREE.Shape =
-    offsetShapeInward(outerShape, insetAmount) ??
-    offsetShapeInward(outerShape, Math.min(insetAmount, 0.8)) ??
-    offsetShapeInward(outerShape, 0.3) ??
-    cloneShape(outerShape);
+  // ── Derive outer + inner wall boundaries ───────────────────────────────
+  // Normal mode: SVG = outer boundary, inset inward to get inner pocket wall.
+  // Clicker mode: SVG = inner pocket boundary, expand outward to get outer wall.
+  let outerShape: THREE.Shape;
+  let innerShape: THREE.Shape;
+
+  if (svgIsClickerShape) {
+    // SVG defines the clicker body → it also defines the pocket the clicker
+    // slides into.  Expand outward by insetAmount to get the physical shell wall.
+    innerShape = cloneShape(svgShape);
+    outerShape =
+      expandShapeOutward(cloneShape(svgShape), insetAmount);
+  } else {
+    // Normal mode: SVG is the outer wall; inset to get the inner pocket.
+    outerShape = cloneShape(svgShape);
+    innerShape =
+      offsetShapeInward(outerShape, insetAmount) ??
+      offsetShapeInward(outerShape, Math.min(insetAmount, 0.8)) ??
+      offsetShapeInward(outerShape, 0.3) ??
+      cloneShape(outerShape);
+  }
 
   // ── 1. Outer wall ring ──────────────────────────────────────────────────
-  const ringShape = transformToMm(baseShape, scale, svgWidth, svgHeight, mirrorShell);
+  const ringShape = cloneShape(outerShape);
   // getPoints(128) returns 129 pts; the last duplicates the first for closed shapes.
   // That zero-length closing edge creates a degenerate triangle in ExtrudeGeometry
   // which renders as a visible spike.  Strip it before pushing the hole.
@@ -291,20 +306,20 @@ export function createInnerClickerGeometries(
   const bossHeight         = settings.bossHeight         ?? DEFAULT_SETTINGS.bossHeight;
   const bossFloorGap       = settings.bossFloorGap       ?? DEFAULT_SETTINGS.bossFloorGap;
 
-  // The clicker's outer boundary is the inner wall shape plus 0.3 mm print clearance,
-  // so it slides cleanly into the recess without binding.
+  // The clicker's outer boundary is sized so it slides cleanly into the shell
+  // pocket without binding (0.3 mm print clearance on every side).
   const CLEARANCE = 0.3;
   const mirrorClicker = settings.mirrorClicker ?? false;
-  const outerShape = transformToMm(baseShape, scale, svgWidth, svgHeight, mirrorClicker);
+  const svgIsClickerShape = settings.svgIsClickerShape ?? false;
+  const svgShape = transformToMm(baseShape, scale, svgWidth, svgHeight, mirrorClicker);
 
-  // For complex concave shapes (e.g. a bunny with a narrow notch between the
-  // ears) the full inset+clearance may collapse the shape. Cascade to smaller
-  // offsets before falling back to the outer shape itself — anything is better
-  // than a tiny 4 mm placeholder that bears no resemblance to the design.
-  const clickerShape: THREE.Shape =
-    offsetShapeInward(outerShape, insetAmount + CLEARANCE) ??
-    offsetShapeInward(outerShape, CLEARANCE) ??
-    cloneShape(outerShape);
+  // Normal mode: SVG = shell outer wall → clicker = SVG − insetAmount − clearance
+  // Clicker mode: SVG = clicker body directly → clicker = SVG − clearance only
+  const clickerShape: THREE.Shape = svgIsClickerShape
+    ? (offsetShapeInward(svgShape, CLEARANCE) ?? cloneShape(svgShape))
+    : (offsetShapeInward(svgShape, insetAmount + CLEARANCE) ??
+       offsetShapeInward(svgShape, CLEARANCE) ??
+       cloneShape(svgShape));
 
   // 0.01 mm outward bleed on the floor so it overlaps the walls section
   // by a tiny amount, preventing the coincident-face gap that slicers mistake

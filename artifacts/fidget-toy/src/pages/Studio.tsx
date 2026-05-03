@@ -1131,6 +1131,22 @@ export default function Studio() {
                     <Upload className="h-3.5 w-3.5" />
                     Upload new SVG
                   </button>
+
+                  {/* Shape role toggle */}
+                  <label className="flex items-start gap-2.5 rounded-lg border border-border bg-accent/20 px-3 py-2.5 cursor-pointer hover:bg-accent/40 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={settings.svgIsClickerShape}
+                      onChange={(e) => setSetting("svgIsClickerShape", e.target.checked)}
+                      className="mt-0.5 accent-emerald-500"
+                    />
+                    <div>
+                      <p className="text-xs font-medium text-foreground leading-tight">Use as inner clicker shape</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">
+                        SVG becomes the clicker body — the outer shell is generated around it
+                      </p>
+                    </div>
+                  </label>
                 </div>
               ) : (
                 /* ── Empty drop zone ── */
