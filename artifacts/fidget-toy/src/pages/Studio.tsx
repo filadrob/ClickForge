@@ -1601,7 +1601,8 @@ export default function Studio() {
 
           {/* ── View toggles (top-right) ── */}
           {svgState && (
-            <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+            <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-2">
+            <div className="flex items-center gap-2">
               {/* Dimensions toggle */}
               <button
                 onClick={() => setShowDimensions((v) => !v)}
@@ -1645,8 +1646,9 @@ export default function Studio() {
                   Outer shell ghosted · clicker seated in recess
                 </span>
               )}
-              {/* ── Controls hint — pinned below the toolbar ── */}
-              <div className="flex flex-col items-end gap-1 text-[10px] text-white/30 pointer-events-none select-none mt-1">
+            </div>
+              {/* ── Controls hint — below the buttons row ── */}
+              <div className="flex flex-col items-end gap-1 text-[10px] text-white/30 pointer-events-none select-none">
                 <div className="flex items-center gap-1.5">
                   <Mouse className="h-3 w-3" />
                   Scroll to zoom
