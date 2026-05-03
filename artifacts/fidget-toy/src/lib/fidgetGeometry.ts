@@ -55,6 +55,21 @@ export interface FidgetSettings {
   // Color region flat bodies — thickness of each per-color extruded slab,
   // sitting flush with the bottom face of the outer shell (z=0 upward).
   colorLayerThickness: number;
+  // When true, swap the functional cutouts between the two parts so the
+  // keycap-mount mechanism lives on the outer shell and the switch-mount
+  // mechanism lives on the inner clicker:
+  //   - Outer shell loses its keycap square pocket + MX pin holes and
+  //     instead carries the switch-housing square cavity (clickerSquareSize)
+  //     with a cylindrical boss inside it; the boss has the MX cross
+  //     pocket cut into its top (sized by bossDiameter / bossHeight /
+  //     crossSize / crossDepth / crossArmWidth, anchored above the floor
+  //     by bossFloorGap, all centred at (pocketOffsetX, pocketOffsetY)).
+  //   - Inner clicker loses its boss + cross pocket and instead carries
+  //     the square switch cavity with the 5 MX pin holes punched inside
+  //     it (gated by pinHolesEnabled).
+  // All other geometry (outer boundaries, wall thicknesses, depth layers,
+  // key-ring lug, etc.) is unchanged.
+  swapCutouts: boolean;
 }
 
 export const DEFAULT_SETTINGS: FidgetSettings = {
@@ -94,6 +109,7 @@ export const DEFAULT_SETTINGS: FidgetSettings = {
   keyRingHoleDiameter: 5,
   keyRingThickness: 1,
   colorLayerThickness: 0.4,
+  swapCutouts: false,
 };
 
 /**
@@ -134,6 +150,17 @@ export interface OuterShellGeometries {
    * keycapPocketDepth < shellSwitchHousing.  null when they are equal (no gap).
    */
   innerFillHousingCap: THREE.BufferGeometry | null;
+  /**
+   * Solid base of the shell-side actuator boss (swap-cutouts mode only).  Sits
+   * at the bottom of the keycap pocket and gives the cross pocket a closed
+   * floor.  Null when `swapCutouts` is off.
+   */
+  bossBase: THREE.BufferGeometry | null;
+  /**
+   * Main cylindrical shell-side boss with the MX cross pocket cut through it
+   * from the top face downward (swap-cutouts mode only).  Null otherwise.
+   */
+  bossMain: THREE.BufferGeometry | null;
   zOffsets: {
     outerWall: number;
     outerWallExtension: number;
@@ -141,7 +168,11 @@ export interface OuterShellGeometries {
     innerFillPinSection: number;
     innerFillWalls: number;
     innerFillHousingCap: number;
+    bossBase: number;
+    bossMain: number;
   };
+  /** Height of the shell-side boss base section (0 when not in swap mode). */
+  bossBaseHeight: number;
   floorDepth: number;
   /** Actual bounding box of the outer wall's outer boundary (mm). */
   bounds: { w: number; h: number };
@@ -155,13 +186,22 @@ export interface InnerClickerGeometries {
   /**
    * Solid base of the boss (below the cross pocket) — gives the pocket a
    * closed floor so the boss doesn't extrude all the way through.
+   * Null when `swapCutouts` is on (boss is moved to the shell-side cross hole).
    */
-  bossBase: THREE.BufferGeometry;
+  bossBase: THREE.BufferGeometry | null;
   /**
    * Main cylindrical shell of the boss with the MX cross pocket cut through
-   * it from the top face downward.
+   * it from the top face downward.  Null when `swapCutouts` is on.
    */
-  bossMain: THREE.BufferGeometry;
+  bossMain: THREE.BufferGeometry | null;
+  /**
+   * Lower part of the switch cavity carrying the MX 5-pin holes.  Only
+   * present when `swapCutouts` is on AND `pinHolesEnabled` is true.
+   * Sits between the clicker floor and the upper square cavity walls.
+   */
+  pinSection: THREE.BufferGeometry | null;
+  /** Height of the pin-hole section (mm); 0 when `pinSection` is null. */
+  pinSectionDepth: number;
   clickerTotalDepth: number;
   clickerFloorDepth: number;
   bossFloorGap: number;
@@ -215,8 +255,14 @@ export function createOuterShellGeometries(
   // clearance is handled by the shell pocket.
   const CLEARANCE = settings.clearanceMm ?? DEFAULT_SETTINGS.clearanceMm;
 
+  const swapCutouts = settings.swapCutouts ?? false;
+
   const pocketDepth = Math.min(keycapPocketDepth, shellSwitchHousing);
-  const pinDepth    = pinHolesEnabled ? Math.min(pinHoleDepth, pocketDepth - 1) : 0;
+  // In swap mode the shell carries a single full-pocket-depth cross cutout
+  // (no pin sub-section, no separate keycap-square section).
+  const pinDepth    = swapCutouts
+    ? 0
+    : (pinHolesEnabled ? Math.min(pinHoleDepth, pocketDepth - 1) : 0);
   const squareDepth = pocketDepth - pinDepth;
 
   const mirrorShell = settings.mirrorShell ?? false;
@@ -281,16 +327,54 @@ export function createOuterShellGeometries(
 
   // ── 3. MX pin-hole section (deepest part of pocket) ────────────────────
   let innerFillPinSectionGeo: THREE.BufferGeometry | null = null;
-  if (pinHolesEnabled && pinDepth > 0) {
+  if (!swapCutouts && pinHolesEnabled && pinDepth > 0) {
     const pinShape = cloneShape(innerShape);
     addMXPinHoles(pinShape, pinHoleRadius, ox, oy);
     innerFillPinSectionGeo = extrudeShape(pinShape, pinDepth, "shell/pinSection", shellStats);
   }
 
-  // ── 4. Keycap square walls (upper / shallower part of pocket) ──────────
-  const wallsShape = cloneShape(innerShape);
-  addSquareHole(wallsShape, keycapSize, ox, oy);
-  const innerFillWallsGeo = extrudeShape(wallsShape, squareDepth, "shell/keycapWalls", shellStats);
+  // ── 4. Pocket walls — keycap square (default) or switch cavity + boss (swap) ─
+  let innerFillWallsGeo: THREE.BufferGeometry;
+  let shellBossBaseGeo: THREE.BufferGeometry | null = null;
+  let shellBossMainGeo: THREE.BufferGeometry | null = null;
+  let shellBossBaseHeight = 0;
+  let shellBossBaseZ = 0;
+  let shellBossMainZ = 0;
+  if (swapCutouts) {
+    // Mirror the inner clicker's default switch-cavity-with-boss arrangement:
+    // a square switch-housing pocket cut through the full pocketDepth, with a
+    // cylindrical boss (cross pocket cut into its top) sitting inside it.
+    const clickerSquareSize = settings.clickerSquareSize ?? DEFAULT_SETTINGS.clickerSquareSize;
+    const wallsShape = cloneShape(innerShape);
+    addSquareHole(wallsShape, clickerSquareSize, ox, oy);
+    innerFillWallsGeo = extrudeShape(wallsShape, squareDepth, "shell/swapCavity", shellStats);
+
+    // Boss assembly — solid base + main shell with cross pocket through the top.
+    const bossDiameter   = settings.bossDiameter   ?? DEFAULT_SETTINGS.bossDiameter;
+    const bossHeight     = settings.bossHeight     ?? DEFAULT_SETTINGS.bossHeight;
+    const bossFloorGap   = settings.bossFloorGap   ?? DEFAULT_SETTINGS.bossFloorGap;
+    const crossSize      = settings.crossSize      ?? DEFAULT_SETTINGS.crossSize;
+    const crossDepth     = settings.crossDepth     ?? DEFAULT_SETTINGS.crossDepth;
+    const crossArmWidth  = settings.crossArmWidth  ?? DEFAULT_SETTINGS.crossArmWidth;
+    const bossRadius     = bossDiameter / 2;
+    shellBossBaseHeight  = Math.max(bossHeight - crossDepth, 0.05);
+    const bossCrossDepth = bossHeight - shellBossBaseHeight;
+
+    const bossBaseShape = makeCircleShape(bossRadius, 64, ox, oy);
+    shellBossBaseGeo = extrudeShape(bossBaseShape, shellBossBaseHeight, "shell/swapBossBase", shellStats);
+
+    const bossMainShape = makeCircleShape(bossRadius, 64, ox, oy);
+    addCrossHole(bossMainShape, crossSize, crossArmWidth, ox, oy);
+    shellBossMainGeo = extrudeShape(bossMainShape, bossCrossDepth, "shell/swapBossMain", shellStats);
+
+    // Anchor the boss inside the pocket: floor → bossFloorGap → boss base → boss main.
+    shellBossBaseZ = floorDepth + bossFloorGap;
+    shellBossMainZ = shellBossBaseZ + shellBossBaseHeight;
+  } else {
+    const wallsShape = cloneShape(innerShape);
+    addSquareHole(wallsShape, keycapSize, ox, oy);
+    innerFillWallsGeo = extrudeShape(wallsShape, squareDepth, "shell/keycapWalls", shellStats);
+  }
 
   // ── 5. Housing cap — solid section above pocket, up to shellSwitchHousing ─
   // Guarantees the full housing region is always modelled, even when
@@ -314,6 +398,8 @@ export function createOuterShellGeometries(
     innerFillPinSection: innerFillPinSectionGeo,
     innerFillWalls: innerFillWallsGeo,
     innerFillHousingCap: innerFillHousingCapGeo,
+    bossBase: shellBossBaseGeo,
+    bossMain: shellBossMainGeo,
     zOffsets: {
       outerWall: 0,
       outerWallExtension: housingDepth,
@@ -321,7 +407,10 @@ export function createOuterShellGeometries(
       innerFillPinSection: floorDepth,
       innerFillWalls: floorDepth + pinDepth,
       innerFillHousingCap: floorDepth + pocketDepth,
+      bossBase: shellBossBaseZ,
+      bossMain: shellBossMainZ,
     },
+    bossBaseHeight: shellBossBaseHeight,
     floorDepth,
     // Outer wall's OUTER boundary — the true physical footprint of the shell.
     bounds: boundingBoxMm(outerShape),
@@ -523,6 +612,10 @@ export function createInnerClickerGeometries(
   const bossDiameter       = settings.bossDiameter       ?? DEFAULT_SETTINGS.bossDiameter;
   const bossHeight         = settings.bossHeight         ?? DEFAULT_SETTINGS.bossHeight;
   const bossFloorGap       = settings.bossFloorGap       ?? DEFAULT_SETTINGS.bossFloorGap;
+  const swapCutouts        = settings.swapCutouts        ?? false;
+  const pinHolesEnabled    = settings.pinHolesEnabled    ?? false;
+  const pinHoleRadius      = settings.pinHoleRadius      ?? DEFAULT_SETTINGS.pinHoleRadius;
+  const pinHoleDepth       = settings.pinHoleDepth       ?? DEFAULT_SETTINGS.pinHoleDepth;
 
   // The clicker's outer boundary is sized so it slides cleanly into the shell
   // pocket without binding. Controlled by the user-facing clearance slider.
@@ -551,13 +644,31 @@ export function createInnerClickerGeometries(
   const clickerStats: GeoStat[] = [];
   const floorShape = expandShapeOutward(cloneShape(clickerShape), FLOOR_BLEED);
   const floorGeo = extrudeShape(floorShape, clickerFloorDepth, "clicker/floor", clickerStats);
+
+  // Default mode: walls = full clickerSquareDepth with square hole.
+  // Swap mode:    walls = upper part (clickerSquareDepth − pinSectionDepth) with
+  //               square hole, and an optional separate pin section sitting
+  //               below it (when pinHolesEnabled).
+  const pinSectionDepth = (swapCutouts && pinHolesEnabled)
+    ? Math.min(pinHoleDepth, Math.max(0, clickerSquareDepth - 1))
+    : 0;
+  const wallsDepth = clickerSquareDepth - pinSectionDepth;
+
   // Upper section — switch housing cavity cut from the top (original size)
   const wallsShape = cloneShape(clickerShape);
   addSquareHole(wallsShape, clickerSquareSize, ox, oy);
-  const wallsGeo = extrudeShape(wallsShape, clickerSquareDepth, "clicker/walls", clickerStats);
+  const wallsGeo = extrudeShape(wallsShape, wallsDepth, "clicker/walls", clickerStats);
 
-  // ── Actuator boss with MX cross pocket ──────────────────────────────────
-  const bossRadius     = bossDiameter / 2;
+  // Lower pin-hole section (swap mode only) — sits between floor and walls,
+  // mirroring the layering pattern the shell uses in default mode.
+  let pinSectionGeo: THREE.BufferGeometry | null = null;
+  if (pinSectionDepth > 0) {
+    const pinShape = cloneShape(clickerShape);
+    addMXPinHoles(pinShape, pinHoleRadius, ox, oy);
+    pinSectionGeo = extrudeShape(pinShape, pinSectionDepth, "clicker/pinSection", clickerStats);
+  }
+
+  // ── Actuator boss with MX cross pocket (default mode only) ──────────────
   const crossSize      = settings.crossSize      ?? DEFAULT_SETTINGS.crossSize;
   const crossDepth     = settings.crossDepth     ?? DEFAULT_SETTINGS.crossDepth;
   const crossArmWidth  = settings.crossArmWidth  ?? DEFAULT_SETTINGS.crossArmWidth;
@@ -566,14 +677,19 @@ export function createInnerClickerGeometries(
   const bossBaseHeight = Math.max(bossHeight - crossDepth, 0.05);
   const bossCrossDepth = bossHeight - bossBaseHeight; // actual pocket depth
 
-  // Boss is offset by (ox, oy) so it stays centred on the switch cavity.
-  const bossBaseShape = makeCircleShape(bossRadius, 64, ox, oy);
-  const bossBaseGeo   = extrudeShape(bossBaseShape, bossBaseHeight, "clicker/bossBase", clickerStats);
+  let bossBaseGeo: THREE.BufferGeometry | null = null;
+  let bossMainGeo: THREE.BufferGeometry | null = null;
+  if (!swapCutouts) {
+    const bossRadius = bossDiameter / 2;
+    // Boss is offset by (ox, oy) so it stays centred on the switch cavity.
+    const bossBaseShape = makeCircleShape(bossRadius, 64, ox, oy);
+    bossBaseGeo = extrudeShape(bossBaseShape, bossBaseHeight, "clicker/bossBase", clickerStats);
 
-  // Main section: circle with MX cross pocket cut through from top to bottom
-  const bossMainShape = makeCircleShape(bossRadius, 64, ox, oy);
-  addCrossHole(bossMainShape, crossSize, crossArmWidth, ox, oy);
-  const bossMainGeo   = extrudeShape(bossMainShape, bossCrossDepth, "clicker/bossMain", clickerStats);
+    // Main section: circle with MX cross pocket cut through from top to bottom
+    const bossMainShape = makeCircleShape(bossRadius, 64, ox, oy);
+    addCrossHole(bossMainShape, crossSize, crossArmWidth, ox, oy);
+    bossMainGeo = extrudeShape(bossMainShape, bossCrossDepth, "clicker/bossMain", clickerStats);
+  }
 
   console.log("[fidget-geo] CLICKER", clickerStats.map(s =>
     `${s.label}:${s.nanCount + s.spikeCount > 0 ? "SPIKE!" : "ok"} v=${s.verts} maxXY=(${s.maxX.toFixed(1)},${s.maxY.toFixed(1)})${s.firstSpike ? " first="+s.firstSpike : ""}`
@@ -584,6 +700,8 @@ export function createInnerClickerGeometries(
     walls: wallsGeo,
     bossBase: bossBaseGeo,
     bossMain: bossMainGeo,
+    pinSection: pinSectionGeo,
+    pinSectionDepth,
     clickerTotalDepth,
     clickerFloorDepth,
     bossFloorGap,

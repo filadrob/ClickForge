@@ -201,6 +201,8 @@ function OuterShellGroup({
   innerFillPinSectionRef,
   innerFillWallsRef,
   innerFillHousingCapRef,
+  shellBossBaseRef,
+  shellBossMainRef,
   keyRingRef,
   fitCheck,
   onBounds,
@@ -217,6 +219,8 @@ function OuterShellGroup({
   innerFillPinSectionRef: React.RefObject<THREE.Mesh | null>;
   innerFillWallsRef: React.RefObject<THREE.Mesh | null>;
   innerFillHousingCapRef: React.RefObject<THREE.Mesh | null>;
+  shellBossBaseRef: React.RefObject<THREE.Mesh | null>;
+  shellBossMainRef: React.RefObject<THREE.Mesh | null>;
   keyRingRef: React.RefObject<THREE.Mesh | null>;
   fitCheck: boolean;
   onBounds?: (b: { w: number; h: number }) => void;
@@ -334,6 +338,28 @@ function OuterShellGroup({
       {isWire && <EdgeWireframe geometry={geos.innerFillWalls} position={[0, 0, geos.zOffsets.innerFillWalls]} color={color} />}
       <MeshHighlightOverlay geometry={geos.innerFillWalls} position={[0, 0, geos.zOffsets.innerFillWalls]} highlighted={hl("shell_walls")} />
 
+      {/* Shell-side actuator boss — swap-cutouts mode only, sits inside the switch cavity */}
+      {geos.bossBase && (
+        <>
+          <mesh ref={shellBossBaseRef} position={[0, 0, geos.zOffsets.bossBase]} castShadow={!isXray && !isWire} receiveShadow>
+            <primitive object={geos.bossBase} />
+            <meshStandardMaterial color={color} metalness={0.3} roughness={0.4} opacity={isWire ? 0 : isXray ? 0.3 : 1} transparent={isWire || isXray} depthWrite={!isWire && !isXray} />
+          </mesh>
+          {isWire && <EdgeWireframe geometry={geos.bossBase} position={[0, 0, geos.zOffsets.bossBase]} color={color} />}
+          <MeshHighlightOverlay geometry={geos.bossBase} position={[0, 0, geos.zOffsets.bossBase]} highlighted={hl("shell_walls")} />
+        </>
+      )}
+      {geos.bossMain && (
+        <>
+          <mesh ref={shellBossMainRef} position={[0, 0, geos.zOffsets.bossMain]} castShadow={!isXray && !isWire} receiveShadow>
+            <primitive object={geos.bossMain} />
+            <meshStandardMaterial color={color} metalness={0.3} roughness={0.4} opacity={isWire ? 0 : isXray ? 0.3 : 1} transparent={isWire || isXray} depthWrite={!isWire && !isXray} />
+          </mesh>
+          {isWire && <EdgeWireframe geometry={geos.bossMain} position={[0, 0, geos.zOffsets.bossMain]} color={color} />}
+          <MeshHighlightOverlay geometry={geos.bossMain} position={[0, 0, geos.zOffsets.bossMain]} highlighted={hl("shell_walls")} />
+        </>
+      )}
+
       {/* Housing cap — solid fill above pocket when keycapPocketDepth < shellSwitchHousing */}
       {geos.innerFillHousingCap && (
         <>
@@ -358,6 +384,7 @@ function InnerClickerGroup({
   svgHeight,
   clickerFloorRef,
   clickerWallsRef,
+  clickerPinSectionRef,
   bossBaseRef,
   bossMainRef,
   fitCheck,
@@ -372,6 +399,7 @@ function InnerClickerGroup({
   svgHeight: number;
   clickerFloorRef: React.RefObject<THREE.Mesh | null>;
   clickerWallsRef: React.RefObject<THREE.Mesh | null>;
+  clickerPinSectionRef: React.RefObject<THREE.Mesh | null>;
   bossBaseRef: React.RefObject<THREE.Mesh | null>;
   bossMainRef: React.RefObject<THREE.Mesh | null>;
   fitCheck: boolean;
@@ -389,7 +417,7 @@ function InnerClickerGroup({
   // Report actual clicker footprint to parent whenever geometry changes.
   useEffect(() => { onBounds?.(geos.bounds); }, [geos, onBounds]);
 
-  const { clickerTotalDepth, clickerFloorDepth, bossFloorGap, bossHeight, bossBaseHeight } = geos;
+  const { clickerTotalDepth, clickerFloorDepth, bossFloorGap, bossHeight, bossBaseHeight, pinSectionDepth } = geos;
   const shellDepth = getShellTotalDepth(settings);
   const shellHousingDepth = (settings.shellSolidFloor ?? DEFAULT_SETTINGS.shellSolidFloor)
                           + (settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing);
@@ -417,8 +445,11 @@ function InnerClickerGroup({
 
   // Local z origins (geo starts at 0, mesh centred at -clickerTotalDepth/2)
   const baseZ      = -clickerTotalDepth / 2;
-  const floorZ     = baseZ;                        // clicker solid floor
-  const wallsZ     = baseZ + clickerFloorDepth;    // clicker wall section
+  const floorZ     = baseZ;                                   // clicker solid floor
+  // In swap mode, an optional pin-hole section sits between the floor and the
+  // square cavity walls (mirrors the shell's default-mode layering).
+  const pinSectionZ = baseZ + clickerFloorDepth;
+  const wallsZ     = pinSectionZ + pinSectionDepth;           // clicker wall section
   // Boss sits bossFloorGap mm above the absolute clicker bottom.
   // The two boss pieces are stacked: solid base then main shell (with cross pocket).
   const bossBaseZ  = baseZ + bossFloorGap;                    // solid base starts here
@@ -438,6 +469,18 @@ function InnerClickerGroup({
       {isWire && <EdgeWireframe geometry={geos.floor} position={[0, 0, floorZ]} color={color} />}
       <MeshHighlightOverlay geometry={geos.floor} position={[0, 0, floorZ]} highlighted={hl("click_floor")} />
 
+      {/* MX pin-hole section — swap-cutout mode only, sits below the square cavity */}
+      {geos.pinSection && (
+        <>
+          <mesh ref={clickerPinSectionRef} position={[0, 0, pinSectionZ]} castShadow={!isXray && !isWire} receiveShadow>
+            <primitive object={geos.pinSection} />
+            <meshStandardMaterial color={color} metalness={0.25} roughness={0.45} opacity={isWire ? 0 : isXray ? 0.3 : 1} transparent={isWire || isXray} depthWrite={!isWire && !isXray} />
+          </mesh>
+          {isWire && <EdgeWireframe geometry={geos.pinSection} position={[0, 0, pinSectionZ]} color={color} />}
+          <MeshHighlightOverlay geometry={geos.pinSection} position={[0, 0, pinSectionZ]} highlighted={hl("click_walls")} />
+        </>
+      )}
+
       <mesh ref={clickerWallsRef} position={[0, 0, wallsZ]} castShadow={!isXray && !isWire} receiveShadow>
         <primitive object={geos.walls} />
         <meshStandardMaterial color={color} metalness={0.25} roughness={0.45} opacity={isWire ? 0 : isXray ? 0.3 : 1} transparent={isWire || isXray} depthWrite={!isWire && !isXray} />
@@ -445,21 +488,29 @@ function InnerClickerGroup({
       {isWire && <EdgeWireframe geometry={geos.walls} position={[0, 0, wallsZ]} color={color} />}
       <MeshHighlightOverlay geometry={geos.walls} position={[0, 0, wallsZ]} highlighted={hl("click_walls")} />
 
-      {/* Boss base — solid disk that closes the bottom of the cross pocket */}
-      <mesh ref={bossBaseRef} position={[0, 0, bossBaseZ]} castShadow={!isXray && !isWire} receiveShadow>
-        <primitive object={geos.bossBase} />
-        <meshStandardMaterial color={color} metalness={0.3} roughness={0.4} opacity={isWire ? 0 : isXray ? 0.3 : 1} transparent={isWire || isXray} depthWrite={!isWire && !isXray} />
-      </mesh>
-      {isWire && <EdgeWireframe geometry={geos.bossBase} position={[0, 0, bossBaseZ]} color={color} />}
-      <MeshHighlightOverlay geometry={geos.bossBase} position={[0, 0, bossBaseZ]} highlighted={hl("click_boss")} />
+      {/* Boss base — solid disk that closes the bottom of the cross pocket (default mode only) */}
+      {geos.bossBase && (
+        <>
+          <mesh ref={bossBaseRef} position={[0, 0, bossBaseZ]} castShadow={!isXray && !isWire} receiveShadow>
+            <primitive object={geos.bossBase} />
+            <meshStandardMaterial color={color} metalness={0.3} roughness={0.4} opacity={isWire ? 0 : isXray ? 0.3 : 1} transparent={isWire || isXray} depthWrite={!isWire && !isXray} />
+          </mesh>
+          {isWire && <EdgeWireframe geometry={geos.bossBase} position={[0, 0, bossBaseZ]} color={color} />}
+          <MeshHighlightOverlay geometry={geos.bossBase} position={[0, 0, bossBaseZ]} highlighted={hl("click_boss")} />
+        </>
+      )}
 
-      {/* Boss main — cylindrical shell with MX cross pocket cut through the top */}
-      <mesh ref={bossMainRef} position={[0, 0, bossMainZ]} castShadow={!isXray && !isWire} receiveShadow>
-        <primitive object={geos.bossMain} />
-        <meshStandardMaterial color={color} metalness={0.3} roughness={0.4} opacity={isWire ? 0 : isXray ? 0.3 : 1} transparent={isWire || isXray} depthWrite={!isWire && !isXray} />
-      </mesh>
-      {isWire && <EdgeWireframe geometry={geos.bossMain} position={[0, 0, bossMainZ]} color={color} />}
-      <MeshHighlightOverlay geometry={geos.bossMain} position={[0, 0, bossMainZ]} highlighted={hl("click_boss")} />
+      {/* Boss main — cylindrical shell with MX cross pocket cut through the top (default mode only) */}
+      {geos.bossMain && (
+        <>
+          <mesh ref={bossMainRef} position={[0, 0, bossMainZ]} castShadow={!isXray && !isWire} receiveShadow>
+            <primitive object={geos.bossMain} />
+            <meshStandardMaterial color={color} metalness={0.3} roughness={0.4} opacity={isWire ? 0 : isXray ? 0.3 : 1} transparent={isWire || isXray} depthWrite={!isWire && !isXray} />
+          </mesh>
+          {isWire && <EdgeWireframe geometry={geos.bossMain} position={[0, 0, bossMainZ]} color={color} />}
+          <MeshHighlightOverlay geometry={geos.bossMain} position={[0, 0, bossMainZ]} highlighted={hl("click_boss")} />
+        </>
+      )}
     </group>
   );
 }
@@ -1082,9 +1133,12 @@ export default function Studio() {
   const innerFillPinSectionRef = useRef<THREE.Mesh | null>(null);
   const innerFillWallsRef = useRef<THREE.Mesh | null>(null);
   const innerFillHousingCapRef = useRef<THREE.Mesh | null>(null);
+  const shellBossBaseRef = useRef<THREE.Mesh | null>(null);
+  const shellBossMainRef = useRef<THREE.Mesh | null>(null);
   const keyRingRef = useRef<THREE.Mesh | null>(null);
   const clickerFloorRef = useRef<THREE.Mesh | null>(null);
   const clickerWallsRef = useRef<THREE.Mesh | null>(null);
+  const clickerPinSectionRef = useRef<THREE.Mesh | null>(null);
   const bossBaseRef = useRef<THREE.Mesh | null>(null);
   const bossMainRef = useRef<THREE.Mesh | null>(null);
   // World-space transform of the color-layer assembly.  We export from raw
@@ -1227,9 +1281,9 @@ export default function Studio() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const getMeshGroups = (): MeshGroups => ({
-    shell: [outerWallRef, innerFillFloorRef, innerFillPinSectionRef, innerFillWallsRef, innerFillHousingCapRef]
+    shell: [outerWallRef, innerFillFloorRef, innerFillPinSectionRef, innerFillWallsRef, innerFillHousingCapRef, shellBossBaseRef, shellBossMainRef]
       .map((r) => r.current).filter((m): m is THREE.Mesh => m !== null),
-    clicker: [clickerFloorRef, clickerWallsRef, bossBaseRef, bossMainRef]
+    clicker: [clickerFloorRef, clickerPinSectionRef, clickerWallsRef, bossBaseRef, bossMainRef]
       .map((r) => r.current).filter((m): m is THREE.Mesh => m !== null),
     keyRing: settings.keyRingEnabled ? keyRingRef.current : null,
     colorLayers: (() => {
@@ -1794,6 +1848,25 @@ export default function Studio() {
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-5 space-y-6">
 
+                {/* Cutout layout — swap functional cutouts between the two parts */}
+                <div className="space-y-3">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={settings.swapCutouts ?? false}
+                      onChange={(e) => setSetting("swapCutouts", e.target.checked)}
+                      className="h-4 w-4 rounded accent-primary"
+                    />
+                    <span className="text-sm">Swap stem-mount and switch-cavity cutouts</span>
+                    <InfoTooltip text="Flips which part holds which feature. Default: outer shell has the keycap square pocket + 5 MX pin holes, inner clicker has the switch cavity + actuator boss with cross pocket. When on: outer shell gets the switch cavity + actuator boss (with cross pocket for the MX stem), and the inner clicker carries the switch-housing square cavity with the 5 MX pin holes punched inside it (no boss). All other geometry stays unchanged." />
+                    <ResetButton
+                      isDefault={(settings.swapCutouts ?? false) === DEFAULT_SETTINGS.swapCutouts}
+                      onReset={() => setSetting("swapCutouts", DEFAULT_SETTINGS.swapCutouts)}
+                      defaultLabel={DEFAULT_SETTINGS.swapCutouts ? "on" : "off"}
+                    />
+                  </label>
+                </div>
+
                 {/* Color regions — only shown when the SVG actually has them */}
                 {colorRegions.length > 0 && (
                   <div>
@@ -2244,6 +2317,8 @@ export default function Studio() {
                       innerFillPinSectionRef={innerFillPinSectionRef}
                       innerFillWallsRef={innerFillWallsRef}
                       innerFillHousingCapRef={innerFillHousingCapRef}
+                      shellBossBaseRef={shellBossBaseRef}
+                      shellBossMainRef={shellBossMainRef}
                       keyRingRef={keyRingRef}
                       fitCheck={fitCheckMode}
                       onBounds={setShellBounds}
@@ -2268,6 +2343,7 @@ export default function Studio() {
                       svgHeight={svgState.height}
                       clickerFloorRef={clickerFloorRef}
                       clickerWallsRef={clickerWallsRef}
+                      clickerPinSectionRef={clickerPinSectionRef}
                       bossBaseRef={bossBaseRef}
                       bossMainRef={bossMainRef}
                       fitCheck={fitCheckMode}
