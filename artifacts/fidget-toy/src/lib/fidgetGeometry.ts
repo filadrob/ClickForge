@@ -326,7 +326,7 @@ export function createInnerClickerGeometries(
   // Normal mode: SVG = shell outer wall → clicker = SVG − insetAmount − clearance
   // Clicker mode: SVG is already the clicker body.
   const clickerShape: THREE.Shape = svgIsClickerShape
-    ? cloneShape(innerShape)
+    ? cloneShape(svgShape)
     : (offsetShapeInward(svgShape, insetAmount + CLEARANCE) ??
        offsetShapeInward(svgShape, CLEARANCE) ??
        cloneShape(svgShape));

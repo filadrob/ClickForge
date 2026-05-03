@@ -44,7 +44,10 @@ import {
   Mouse,
   MoveHorizontal,
   RotateCcw,
+  ChevronDown,
+  Settings2,
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 // ─── Colour utilities ─────────────────────────────────────────────────────
 
@@ -1011,6 +1014,7 @@ export default function Studio() {
   );
 
   const [mergeForExport, setMergeForExport] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const getMeshGroups = (): MeshGroups => ({
     shell: [outerWallRef, innerFillFloorRef, innerFillPinSectionRef, innerFillWallsRef]
@@ -1283,7 +1287,7 @@ export default function Studio() {
               </button>
             </div>
 
-            {/* Outer shell dimensions */}
+            {/* ── Outer Shell (basics) ── */}
             <div>
               <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
                 Outer Shell
@@ -1328,16 +1332,6 @@ export default function Studio() {
                   {...hl(["shell_floor", "shell_walls"])}
                 />
                 <SliderRow
-                  label="Keycap pocket depth"
-                  value={settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth}
-                  min={2}
-                  max={settings.innerFillDepth - 1}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("keycapPocketDepth", v)}
-                  {...hl(["shell_walls"])}
-                />
-                <SliderRow
                   label="Wall thickness"
                   value={settings.insetAmount}
                   min={0.5}
@@ -1347,143 +1341,10 @@ export default function Studio() {
                   onChange={(v) => setSetting("insetAmount", v)}
                   {...hl(["shell_outer", "shell_floor", "shell_walls"])}
                 />
-
-                {/* Switch pin holes — sub-section under Outer Shell */}
-                <div className="border-t border-border/40 pt-4 space-y-3">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={settings.pinHolesEnabled}
-                      onChange={(e) => setSetting("pinHolesEnabled", e.target.checked)}
-                      className="h-4 w-4 rounded accent-primary"
-                    />
-                    <span className="text-sm">Cherry MX 5-pin holes</span>
-                    <InfoTooltip text="Punches the Cherry MX 5-pin footprint into the deepest section of the pocket: Ø4 mm center guide · Ø1.8 mm retention pegs (±5.08 mm) · Ø1.5 mm contacts (±3.81 mm / −2.54 mm). The pin section sits below the keycap square — from the pocket floor upward." />
-                  </label>
-                  {settings.pinHolesEnabled && (
-                    <div className="space-y-3 pl-6">
-                      <SliderRow
-                        label="Pin section depth"
-                        value={settings.pinHoleDepth ?? DEFAULT_SETTINGS.pinHoleDepth}
-                        min={1}
-                        max={Math.max(1, (settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth) - 1)}
-                        step={0.01}
-                        unit="mm"
-                        onChange={(v) => setSetting("pinHoleDepth", v)}
-                        {...hl(["shell_pin"])}
-                      />
-                      <SliderRow
-                        label="Print clearance"
-                        value={settings.pinHoleRadius ?? DEFAULT_SETTINGS.pinHoleRadius}
-                        min={0}
-                        max={0.5}
-                        step={0.01}
-                        unit="mm"
-                        onChange={(v) => setSetting("pinHoleRadius", v)}
-                        {...hl(["shell_pin"])}
-                      />
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
 
-            {/* Switch dimensions — keycap pocket + switch housing cavity */}
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                Switch Dimensions
-              </h2>
-              <div className="space-y-5">
-                <SliderRow
-                  label="Keycap square"
-                  value={settings.keycapSize}
-                  min={10}
-                  max={22}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("keycapSize", v)}
-                  {...hl(["shell_walls"])}
-                />
-                <SliderRow
-                  label="Switch cavity size"
-                  value={settings.clickerSquareSize ?? DEFAULT_SETTINGS.clickerSquareSize}
-                  min={10}
-                  max={30}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("clickerSquareSize", v)}
-                  {...hl(["click_walls"])}
-                />
-                <SliderRow
-                  label="Switch cavity depth"
-                  value={settings.clickerSquareDepth ?? DEFAULT_SETTINGS.clickerSquareDepth}
-                  min={1}
-                  max={Math.max(1, (settings.clickerTotalDepth ?? DEFAULT_SETTINGS.clickerTotalDepth) - (settings.clickerFloorDepth ?? DEFAULT_SETTINGS.clickerFloorDepth))}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("clickerSquareDepth", v)}
-                  {...hl(["click_walls"])}
-                />
-
-                {/* Pocket position nudge */}
-                <div className="border-t border-border/40 pt-4 space-y-3">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-                    Pocket position nudge
-                    <InfoTooltip text="Shifts the keycap pocket, switch cavity, and boss together as a unit. Use this to visually re-centre the switch on irregular or asymmetric shapes. Both parts move identically so they stay aligned." />
-                  </div>
-                  <SliderRow
-                    label="Offset X"
-                    value={settings.pocketOffsetX ?? 0}
-                    min={-20}
-                    max={20}
-                    step={0.1}
-                    unit="mm"
-                    onChange={(v) => setSetting("pocketOffsetX", v)}
-                    {...hl(["shell_walls", "click_boss", "click_walls"])}
-                  />
-                  <SliderRow
-                    label="Offset Y"
-                    value={settings.pocketOffsetY ?? 0}
-                    min={-20}
-                    max={20}
-                    step={0.1}
-                    unit="mm"
-                    onChange={(v) => setSetting("pocketOffsetY", v)}
-                    {...hl(["shell_walls", "click_boss", "click_walls"])}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Fit clearance */}
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                Fit Clearance
-              </h2>
-              <div className="space-y-5">
-                <SliderRow
-                  label="XY gap"
-                  value={settings.clearanceMm ?? DEFAULT_SETTINGS.clearanceMm}
-                  min={0.05}
-                  max={1.0}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("clearanceMm", v)}
-                  {...hl(
-                    (settings.svgIsClickerShape ?? false)
-                      ? ["shell_outer", "shell_floor", "shell_walls"]
-                      : ["click_floor", "click_walls"]
-                  )}
-                />
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {(settings.svgIsClickerShape ?? false)
-                    ? "SVG is clicker — gap is added to the outer shell so the clicker slides in cleanly."
-                    : "Gap is removed from the clicker body so it slides into the shell pocket."}
-                </p>
-              </div>
-            </div>
-
-            {/* Inner clicker dimensions */}
+            {/* ── Inner Clicker (basics) ── */}
             <div>
               <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
                 Inner Clicker
@@ -1527,71 +1388,246 @@ export default function Studio() {
                   onChange={(v) => setSetting("clickerFloorDepth", v)}
                   {...hl(["click_floor"])}
                 />
-                <SliderRow
-                  label="Boss diameter"
-                  value={settings.bossDiameter ?? DEFAULT_SETTINGS.bossDiameter}
-                  min={1}
-                  max={15}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("bossDiameter", v)}
-                  {...hl(["click_boss"])}
-                />
-                <SliderRow
-                  label="Boss height"
-                  value={settings.bossHeight ?? DEFAULT_SETTINGS.bossHeight}
-                  min={0.5}
-                  max={15}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("bossHeight", v)}
-                  {...hl(["click_boss"])}
-                />
-                <SliderRow
-                  label="Boss floor gap"
-                  value={settings.bossFloorGap ?? DEFAULT_SETTINGS.bossFloorGap}
-                  min={0}
-                  max={Math.max(0, (settings.clickerFloorDepth ?? DEFAULT_SETTINGS.clickerFloorDepth) - 0.1)}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("bossFloorGap", v)}
-                  {...hl(["click_boss"])}
-                />
-                <div className="pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-                  MX cross pocket
-                </div>
-                <SliderRow
-                  label="Cross size"
-                  value={settings.crossSize ?? DEFAULT_SETTINGS.crossSize}
-                  min={2}
-                  max={6}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("crossSize", v)}
-                  {...hl(["click_boss"])}
-                />
-                <SliderRow
-                  label="Cross depth"
-                  value={settings.crossDepth ?? DEFAULT_SETTINGS.crossDepth}
-                  min={0.5}
-                  max={Math.max(0.5, (settings.bossHeight ?? DEFAULT_SETTINGS.bossHeight) - 0.05)}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("crossDepth", v)}
-                  {...hl(["click_boss"])}
-                />
-                <SliderRow
-                  label="Arm width"
-                  value={settings.crossArmWidth ?? DEFAULT_SETTINGS.crossArmWidth}
-                  min={0.8}
-                  max={Math.max(0.8, (settings.crossSize ?? DEFAULT_SETTINGS.crossSize) * 0.9)}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("crossArmWidth", v)}
-                  {...hl(["click_boss"])}
-                />
               </div>
             </div>
+
+            {/* ── Fit Clearance ── */}
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                Fit Clearance
+              </h2>
+              <div className="space-y-5">
+                <SliderRow
+                  label="XY gap"
+                  value={settings.clearanceMm ?? DEFAULT_SETTINGS.clearanceMm}
+                  min={0.05}
+                  max={1.0}
+                  step={0.01}
+                  unit="mm"
+                  onChange={(v) => setSetting("clearanceMm", v)}
+                  {...hl(
+                    (settings.svgIsClickerShape ?? false)
+                      ? ["shell_outer", "shell_floor", "shell_walls"]
+                      : ["click_floor", "click_walls"]
+                  )}
+                />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {(settings.svgIsClickerShape ?? false)
+                    ? "SVG is clicker — gap is added to the outer shell so the clicker slides in cleanly."
+                    : "Gap is removed from the clicker body so it slides into the shell pocket."}
+                </p>
+              </div>
+            </div>
+
+            {/* ── Advanced disclosure ── */}
+            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="group flex w-full items-center justify-between rounded-lg border border-border/60 bg-accent/20 hover:bg-accent/40 px-3 py-2.5 transition-colors"
+                >
+                  <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground group-hover:text-foreground">
+                    <Settings2 className="h-3.5 w-3.5" />
+                    Advanced
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 text-muted-foreground transition-transform ${advancedOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-5 space-y-6">
+
+                {/* Switch cavity (keycap + cavity dims) */}
+                <div>
+                  <div className="flex items-center gap-1.5 mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">
+                    Switch Cavity
+                    <InfoTooltip text="Cherry MX–compatible defaults. Only adjust if you're using a non-standard switch or want a deliberately loose/tight fit." />
+                  </div>
+                  <div className="space-y-5">
+                    <SliderRow
+                      label="Keycap pocket depth"
+                      value={settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth}
+                      min={2}
+                      max={settings.innerFillDepth - 1}
+                      step={0.01}
+                      unit="mm"
+                      onChange={(v) => setSetting("keycapPocketDepth", v)}
+                      {...hl(["shell_walls"])}
+                    />
+                    <SliderRow
+                      label="Keycap square"
+                      value={settings.keycapSize}
+                      min={10}
+                      max={22}
+                      step={0.01}
+                      unit="mm"
+                      onChange={(v) => setSetting("keycapSize", v)}
+                      {...hl(["shell_walls"])}
+                    />
+                    <SliderRow
+                      label="Switch cavity size"
+                      value={settings.clickerSquareSize ?? DEFAULT_SETTINGS.clickerSquareSize}
+                      min={10}
+                      max={30}
+                      step={0.01}
+                      unit="mm"
+                      onChange={(v) => setSetting("clickerSquareSize", v)}
+                      {...hl(["click_walls"])}
+                    />
+                    <SliderRow
+                      label="Switch cavity depth"
+                      value={settings.clickerSquareDepth ?? DEFAULT_SETTINGS.clickerSquareDepth}
+                      min={1}
+                      max={Math.max(1, (settings.clickerTotalDepth ?? DEFAULT_SETTINGS.clickerTotalDepth) - (settings.clickerFloorDepth ?? DEFAULT_SETTINGS.clickerFloorDepth))}
+                      step={0.01}
+                      unit="mm"
+                      onChange={(v) => setSetting("clickerSquareDepth", v)}
+                      {...hl(["click_walls"])}
+                    />
+                  </div>
+                </div>
+
+                {/* Actuator boss + MX cross pocket */}
+                <div className="border-t border-border/40 pt-5">
+                  <div className="flex items-center gap-1.5 mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">
+                    Actuator Boss
+                    <InfoTooltip text="The cylindrical boss on the clicker that engages the MX switch stem. Cross pocket sits on top." />
+                  </div>
+                  <div className="space-y-5">
+                    <SliderRow
+                      label="Boss diameter"
+                      value={settings.bossDiameter ?? DEFAULT_SETTINGS.bossDiameter}
+                      min={1}
+                      max={15}
+                      step={0.01}
+                      unit="mm"
+                      onChange={(v) => setSetting("bossDiameter", v)}
+                      {...hl(["click_boss"])}
+                    />
+                    <SliderRow
+                      label="Boss height"
+                      value={settings.bossHeight ?? DEFAULT_SETTINGS.bossHeight}
+                      min={0.5}
+                      max={15}
+                      step={0.01}
+                      unit="mm"
+                      onChange={(v) => setSetting("bossHeight", v)}
+                      {...hl(["click_boss"])}
+                    />
+                    <SliderRow
+                      label="Boss floor gap"
+                      value={settings.bossFloorGap ?? DEFAULT_SETTINGS.bossFloorGap}
+                      min={0}
+                      max={Math.max(0, (settings.clickerFloorDepth ?? DEFAULT_SETTINGS.clickerFloorDepth) - 0.1)}
+                      step={0.01}
+                      unit="mm"
+                      onChange={(v) => setSetting("bossFloorGap", v)}
+                      {...hl(["click_boss"])}
+                    />
+                    <div className="pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+                      MX cross pocket
+                    </div>
+                    <SliderRow
+                      label="Cross size"
+                      value={settings.crossSize ?? DEFAULT_SETTINGS.crossSize}
+                      min={2}
+                      max={6}
+                      step={0.01}
+                      unit="mm"
+                      onChange={(v) => setSetting("crossSize", v)}
+                      {...hl(["click_boss"])}
+                    />
+                    <SliderRow
+                      label="Cross depth"
+                      value={settings.crossDepth ?? DEFAULT_SETTINGS.crossDepth}
+                      min={0.5}
+                      max={Math.max(0.5, (settings.bossHeight ?? DEFAULT_SETTINGS.bossHeight) - 0.05)}
+                      step={0.01}
+                      unit="mm"
+                      onChange={(v) => setSetting("crossDepth", v)}
+                      {...hl(["click_boss"])}
+                    />
+                    <SliderRow
+                      label="Arm width"
+                      value={settings.crossArmWidth ?? DEFAULT_SETTINGS.crossArmWidth}
+                      min={0.8}
+                      max={Math.max(0.8, (settings.crossSize ?? DEFAULT_SETTINGS.crossSize) * 0.9)}
+                      step={0.01}
+                      unit="mm"
+                      onChange={(v) => setSetting("crossArmWidth", v)}
+                      {...hl(["click_boss"])}
+                    />
+                  </div>
+                </div>
+
+                {/* Cherry MX 5-pin holes */}
+                <div className="border-t border-border/40 pt-5 space-y-3">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={settings.pinHolesEnabled}
+                      onChange={(e) => setSetting("pinHolesEnabled", e.target.checked)}
+                      className="h-4 w-4 rounded accent-primary"
+                    />
+                    <span className="text-sm">Cherry MX 5-pin holes</span>
+                    <InfoTooltip text="Punches the Cherry MX 5-pin footprint into the deepest section of the pocket: Ø4 mm center guide · Ø1.8 mm retention pegs (±5.08 mm) · Ø1.5 mm contacts (±3.81 mm / −2.54 mm). The pin section sits below the keycap square — from the pocket floor upward." />
+                  </label>
+                  {settings.pinHolesEnabled && (
+                    <div className="space-y-3 pl-6">
+                      <SliderRow
+                        label="Pin section depth"
+                        value={settings.pinHoleDepth ?? DEFAULT_SETTINGS.pinHoleDepth}
+                        min={1}
+                        max={Math.max(1, (settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth) - 1)}
+                        step={0.01}
+                        unit="mm"
+                        onChange={(v) => setSetting("pinHoleDepth", v)}
+                        {...hl(["shell_pin"])}
+                      />
+                      <SliderRow
+                        label="Print clearance"
+                        value={settings.pinHoleRadius ?? DEFAULT_SETTINGS.pinHoleRadius}
+                        min={0}
+                        max={0.5}
+                        step={0.01}
+                        unit="mm"
+                        onChange={(v) => setSetting("pinHoleRadius", v)}
+                        {...hl(["shell_pin"])}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Pocket position nudge */}
+                <div className="border-t border-border/40 pt-5 space-y-3">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">
+                    Pocket position nudge
+                    <InfoTooltip text="Shifts the keycap pocket, switch cavity, and boss together as a unit. Use this to visually re-centre the switch on irregular or asymmetric shapes. Both parts move identically so they stay aligned." />
+                  </div>
+                  <SliderRow
+                    label="Offset X"
+                    value={settings.pocketOffsetX ?? 0}
+                    min={-20}
+                    max={20}
+                    step={0.1}
+                    unit="mm"
+                    onChange={(v) => setSetting("pocketOffsetX", v)}
+                    {...hl(["shell_walls", "click_boss", "click_walls"])}
+                  />
+                  <SliderRow
+                    label="Offset Y"
+                    value={settings.pocketOffsetY ?? 0}
+                    min={-20}
+                    max={20}
+                    step={0.1}
+                    unit="mm"
+                    onChange={(v) => setSetting("pocketOffsetY", v)}
+                    {...hl(["shell_walls", "click_boss", "click_walls"])}
+                  />
+                </div>
+
+              </CollapsibleContent>
+            </Collapsible>
 
             {/* Parts legend */}
             <div>
