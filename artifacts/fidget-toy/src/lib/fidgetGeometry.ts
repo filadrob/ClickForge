@@ -44,6 +44,12 @@ export interface FidgetSettings {
   // Preview colours (hex strings, e.g. "#6C63FF")
   shellColor: string;
   clickerColor: string;
+  // Key ring lug — optional cylindrical tab with through-hole at top-centre
+  // of the outer shell.  Inner clicker is unaffected.
+  keyRingEnabled: boolean;
+  keyRingOuterDiameter: number; // mm, e.g. 10
+  keyRingHoleDiameter: number;  // mm, e.g. 5
+  keyRingThickness: number;     // mm, lug Z thickness (aligned to bottom), e.g. 1
 }
 
 export const DEFAULT_SETTINGS: FidgetSettings = {
@@ -77,6 +83,10 @@ export const DEFAULT_SETTINGS: FidgetSettings = {
   svgIsClickerShape: false,
   shellColor: "#6C63FF",
   clickerColor: "#10B981",
+  keyRingEnabled: false,
+  keyRingOuterDiameter: 10,
+  keyRingHoleDiameter: 5,
+  keyRingThickness: 1,
 };
 
 /**
@@ -250,6 +260,66 @@ export function createOuterShellGeometries(
     floorDepth,
     // Outer wall's OUTER boundary — the true physical footprint of the shell.
     bounds: boundingBoxMm(outerShape),
+  };
+}
+
+/**
+ * Build the optional key-ring lug geometry: a solid cylinder with a concentric
+ * through-hole, extruded the same depth as the outer shell.  Position the
+ * returned mesh at `{x, y}` (in shell-local mm coords) and z=0; it will sit
+ * straddling the top edge of the shell's bounding box.
+ *
+ * Inner clicker is intentionally untouched.
+ */
+export interface KeyRingGeometryResult {
+  geometry: THREE.BufferGeometry;
+  position: { x: number; y: number };
+}
+
+export function createKeyRingGeometry(
+  outerShellBounds: { w: number; h: number },
+  settings: FidgetSettings
+): KeyRingGeometryResult {
+  const outer = settings.keyRingOuterDiameter ?? DEFAULT_SETTINGS.keyRingOuterDiameter;
+  const holeRequested = settings.keyRingHoleDiameter ?? DEFAULT_SETTINGS.keyRingHoleDiameter;
+  // Cap hole so it stays strictly smaller than the cylinder (leave ≥0.4 mm wall).
+  const hole = Math.min(holeRequested, Math.max(0, outer - 0.8));
+  const outerR = outer / 2;
+  const holeR  = Math.max(0, hole / 2);
+
+  const ring = new THREE.Shape();
+  const SEG = 64;
+  for (let i = 0; i < SEG; i++) {
+    const a = (i / SEG) * Math.PI * 2;
+    const x = Math.cos(a) * outerR;
+    const y = Math.sin(a) * outerR;
+    if (i === 0) ring.moveTo(x, y); else ring.lineTo(x, y);
+  }
+
+  if (holeR > 0) {
+    const holePath = new THREE.Path();
+    for (let i = 0; i < SEG; i++) {
+      // Wind hole CW (opposite of outer CCW) so ExtrudeGeometry treats it as a hole.
+      const a = -(i / SEG) * Math.PI * 2;
+      const x = Math.cos(a) * holeR;
+      const y = Math.sin(a) * holeR;
+      if (i === 0) holePath.moveTo(x, y); else holePath.lineTo(x, y);
+    }
+    ring.holes.push(holePath);
+  }
+
+  const thickness = Math.max(
+    0.1,
+    settings.keyRingThickness ?? DEFAULT_SETTINGS.keyRingThickness
+  );
+  const geometry = new THREE.ExtrudeGeometry(ring, {
+    depth: thickness,
+    bevelEnabled: false,
+  });
+
+  return {
+    geometry,
+    position: { x: 0, y: outerShellBounds.h / 2 },
   };
 }
 

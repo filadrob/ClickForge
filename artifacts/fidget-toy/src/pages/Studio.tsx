@@ -21,6 +21,7 @@ import RasterToSvgModal from "@/components/RasterToSvgModal";
 import {
   createOuterShellGeometries,
   createInnerClickerGeometries,
+  createKeyRingGeometry,
   validateGeometry,
   DEFAULT_SETTINGS,
   type FidgetSettings,
@@ -137,6 +138,7 @@ function OuterShellGroup({
   innerFillFloorRef,
   innerFillPinSectionRef,
   innerFillWallsRef,
+  keyRingRef,
   fitCheck,
   onBounds,
   color,
@@ -151,6 +153,7 @@ function OuterShellGroup({
   innerFillFloorRef: React.RefObject<THREE.Mesh | null>;
   innerFillPinSectionRef: React.RefObject<THREE.Mesh | null>;
   innerFillWallsRef: React.RefObject<THREE.Mesh | null>;
+  keyRingRef: React.RefObject<THREE.Mesh | null>;
   fitCheck: boolean;
   onBounds?: (b: { w: number; h: number }) => void;
   color: string;
@@ -161,6 +164,14 @@ function OuterShellGroup({
     () => createOuterShellGeometries(shapes, settings, svgWidth, svgHeight),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [shapes, settings, svgWidth, svgHeight]
+  );
+
+  const keyRing = useMemo(
+    () => settings.keyRingEnabled
+      ? createKeyRingGeometry(geos.bounds, settings)
+      : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [geos, settings]
   );
 
   // Report actual shell footprint to parent whenever geometry changes.
@@ -220,6 +231,33 @@ function OuterShellGroup({
           {isWire && <EdgeWireframe geometry={geos.innerFillPinSection} position={[0, 0, geos.zOffsets.innerFillPinSection]} color={color} />}
           <MeshHighlightOverlay geometry={geos.innerFillPinSection} position={[0, 0, geos.zOffsets.innerFillPinSection]} highlighted={hl("shell_pin")} />
         </>
+      )}
+
+      {/* Optional key-ring lug — sits straddling the top edge of the shell */}
+      {keyRing && (
+        <mesh
+          ref={keyRingRef}
+          position={[keyRing.position.x, keyRing.position.y, geos.zOffsets.outerWall]}
+          castShadow={!fitCheck && !isXray && !isWire}
+          receiveShadow
+        >
+          <primitive object={keyRing.geometry} />
+          <meshStandardMaterial
+            color={color}
+            metalness={0.25}
+            roughness={0.45}
+            opacity={isWire ? 0 : fitCheck ? 0.28 : isXray ? 0.3 : 1}
+            transparent={isWire || fitCheck || isXray}
+            depthWrite={!isWire && !fitCheck && !isXray}
+          />
+        </mesh>
+      )}
+      {keyRing && isWire && (
+        <EdgeWireframe
+          geometry={keyRing.geometry}
+          position={[keyRing.position.x, keyRing.position.y, geos.zOffsets.outerWall]}
+          color={color}
+        />
       )}
 
       {/* Keycap square pocket walls — upper / shallower section of pocket */}
@@ -936,6 +974,7 @@ export default function Studio() {
   const innerFillFloorRef = useRef<THREE.Mesh | null>(null);
   const innerFillPinSectionRef = useRef<THREE.Mesh | null>(null);
   const innerFillWallsRef = useRef<THREE.Mesh | null>(null);
+  const keyRingRef = useRef<THREE.Mesh | null>(null);
   const clickerFloorRef = useRef<THREE.Mesh | null>(null);
   const clickerWallsRef = useRef<THREE.Mesh | null>(null);
   const bossBaseRef = useRef<THREE.Mesh | null>(null);
@@ -1021,11 +1060,12 @@ export default function Studio() {
       .map((r) => r.current).filter((m): m is THREE.Mesh => m !== null),
     clicker: [clickerFloorRef, clickerWallsRef, bossBaseRef, bossMainRef]
       .map((r) => r.current).filter((m): m is THREE.Mesh => m !== null),
+    keyRing: settings.keyRingEnabled ? keyRingRef.current : null,
   });
 
   const getMeshes = (): THREE.Mesh[] => {
     const g = getMeshGroups();
-    return [...g.shell, ...g.clicker];
+    return [...g.shell, ...g.clicker, ...(g.keyRing ? [g.keyRing] : [])];
   };
 
   const handleExportSTL = async () => {
@@ -1341,6 +1381,66 @@ export default function Studio() {
                   onChange={(v) => setSetting("insetAmount", v)}
                   {...hl(["shell_outer", "shell_floor", "shell_walls"])}
                 />
+              </div>
+            </div>
+
+            {/* ── Key Ring (outer shell only) ── */}
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                Key Ring
+              </h2>
+              <div className="space-y-5">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={settings.keyRingEnabled ?? false}
+                    onChange={(e) => setSetting("keyRingEnabled", e.target.checked)}
+                    className="h-4 w-4 rounded accent-primary"
+                  />
+                  <span className="text-sm">Add key ring lug</span>
+                  <InfoTooltip text="Adds a cylindrical tab with a through-hole at the top-centre of the outer shell so you can clip on a real key ring or carabiner. Inner clicker is unchanged." />
+                </label>
+                {settings.keyRingEnabled && (
+                  <div className="space-y-5 pl-6">
+                    <SliderRow
+                      label="Cylinder diameter"
+                      value={settings.keyRingOuterDiameter ?? DEFAULT_SETTINGS.keyRingOuterDiameter}
+                      min={6}
+                      max={20}
+                      step={0.1}
+                      unit="mm"
+                      onChange={(v) => setSetting("keyRingOuterDiameter", v)}
+                    />
+                    <SliderRow
+                      label="Hole diameter"
+                      value={settings.keyRingHoleDiameter ?? DEFAULT_SETTINGS.keyRingHoleDiameter}
+                      min={2}
+                      max={Math.max(2, (settings.keyRingOuterDiameter ?? DEFAULT_SETTINGS.keyRingOuterDiameter) - 0.8)}
+                      step={0.1}
+                      unit="mm"
+                      onChange={(v) => setSetting("keyRingHoleDiameter", v)}
+                    />
+                    <SliderRow
+                      label="Thickness (Z)"
+                      value={settings.keyRingThickness ?? DEFAULT_SETTINGS.keyRingThickness}
+                      min={0.5}
+                      max={Math.max(
+                        0.5,
+                        settings.innerFillDepth -
+                          Math.min(
+                            settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth,
+                            settings.innerFillDepth - 1
+                          )
+                      )}
+                      step={0.1}
+                      unit="mm"
+                      onChange={(v) => setSetting("keyRingThickness", v)}
+                    />
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Lug sits flush with the bottom of the shell and stays within the solid floor so it never blocks the inner clicker pocket.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1814,6 +1914,7 @@ export default function Studio() {
                       innerFillFloorRef={innerFillFloorRef}
                       innerFillPinSectionRef={innerFillPinSectionRef}
                       innerFillWallsRef={innerFillWallsRef}
+                      keyRingRef={keyRingRef}
                       fitCheck={fitCheckMode}
                       onBounds={setShellBounds}
                       color={settings.shellColor ?? DEFAULT_SETTINGS.shellColor}

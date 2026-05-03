@@ -6,6 +6,8 @@ import JSZip from "jszip";
 export type MeshGroups = {
   shell: THREE.Mesh[];
   clicker: THREE.Mesh[];
+  /** Optional key-ring lug mesh attached to the outer shell. */
+  keyRing?: THREE.Mesh | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -34,7 +36,8 @@ export async function export3MF(meshes: THREE.Mesh[]): Promise<void> {
 export async function exportSTLMerged(groups: MeshGroups): Promise<void> {
   const exporter = new STLExporter();
 
-  const shellGeo = mergeInWorldSpace(groups.shell);
+  const shellMeshes = groups.keyRing ? [...groups.shell, groups.keyRing] : groups.shell;
+  const shellGeo = mergeInWorldSpace(shellMeshes);
   const clickerGeo = mergeInWorldSpace(groups.clicker);
 
   const zip = new JSZip();
@@ -56,7 +59,8 @@ export async function exportSTLMerged(groups: MeshGroups): Promise<void> {
 }
 
 export async function export3MFMerged(groups: MeshGroups): Promise<void> {
-  const shellGeo   = mergeInWorldSpace(groups.shell);
+  const shellMeshes = groups.keyRing ? [...groups.shell, groups.keyRing] : groups.shell;
+  const shellGeo   = mergeInWorldSpace(shellMeshes);
   const clickerGeo = mergeInWorldSpace(groups.clicker);
 
   const objects: { name: string; meshes: THREE.Mesh[] }[] = [];
