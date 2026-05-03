@@ -1433,6 +1433,34 @@ export default function Studio() {
               </div>
             </div>
 
+            {/* Fit clearance */}
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                Fit Clearance
+              </h2>
+              <div className="space-y-5">
+                <SliderRow
+                  label="XY gap"
+                  value={settings.clearanceMm ?? DEFAULT_SETTINGS.clearanceMm}
+                  min={0.05}
+                  max={1.0}
+                  step={0.01}
+                  unit="mm"
+                  onChange={(v) => setSetting("clearanceMm", v)}
+                  {...hl(
+                    (settings.svgIsClickerShape ?? false)
+                      ? ["shell_outer", "shell_floor", "shell_walls"]
+                      : ["click_floor", "click_walls"]
+                  )}
+                />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {(settings.svgIsClickerShape ?? false)
+                    ? "SVG is clicker — gap is added to the outer shell so the clicker slides in cleanly."
+                    : "Gap is removed from the clicker body so it slides into the shell pocket."}
+                </p>
+              </div>
+            </div>
+
             {/* Inner clicker dimensions */}
             <div>
               <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
@@ -1457,16 +1485,6 @@ export default function Studio() {
                   />
                   <span className="text-sm">Mirror left-right</span>
                 </label>
-                <SliderRow
-                  label="XY gap (clearance)"
-                  value={settings.clearanceMm ?? DEFAULT_SETTINGS.clearanceMm}
-                  min={0.05}
-                  max={1.0}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("clearanceMm", v)}
-                  {...hl(["click_floor", "click_walls"])}
-                />
                 <SliderRow
                   label="Total thickness"
                   value={settings.clickerTotalDepth ?? DEFAULT_SETTINGS.clickerTotalDepth}
