@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useMemo, Suspense, useEffect } from "rea
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls, Grid, Html, Line } from "@react-three/drei";
 import * as THREE from "three";
-import { useLocation, Link } from "wouter";
+import { useLocation, useParams, Link } from "wouter";
 import { useUser, useClerk } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -13,7 +13,9 @@ import { useToast } from "@/hooks/use-toast";
 import {
   useCreateProject,
   useUpdateProject,
+  useGetProject,
   getListProjectsQueryKey,
+  type FidgetSettingsBlob,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { parseSVGContent, extractSvgColor } from "@/lib/svgParser";
@@ -894,11 +896,13 @@ export default function Studio() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const params = useParams<{ id?: string }>();
+  const routeProjectId = params.id ? Number(params.id) : null;
 
   const [svgState, setSvgState] = useState<ParsedSVGState | null>(null);
   const [rasterFile, setRasterFile] = useState<File | null>(null);
   const [projectName, setProjectName] = useState("My Fidget Toy");
-  const [projectId, setProjectId] = useState<number | null>(null);
+  const [projectId, setProjectId] = useState<number | null>(routeProjectId);
   const [isDragging, setIsDragging] = useState(false);
   const [settings, setSettings] = useState<FidgetSettings>(DEFAULT_SETTINGS);
   const [fitCheckMode, setFitCheckMode] = useState(false);
@@ -982,6 +986,42 @@ export default function Studio() {
 
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
+
+  const loadedProject = useGetProject(routeProjectId ?? 0, {
+    query: { enabled: routeProjectId !== null, queryKey: [`/api/projects/${routeProjectId}`] },
+  });
+
+  const [hydratedForId, setHydratedForId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!loadedProject.data || hydratedForId === routeProjectId) return;
+    const p = loadedProject.data;
+    setProjectName(p.name);
+    setProjectId(p.id);
+
+    const savedSettings: FidgetSettings = {
+      ...DEFAULT_SETTINGS,
+      ...(p.settings as Partial<FidgetSettings> | null ?? {}),
+    };
+    setSettings(savedSettings);
+    setDraftSizeMm(String(savedSettings.targetSizeMm));
+
+    if (p.svgData) {
+      try {
+        const parsed = parseSVGContent(p.svgData);
+        setSvgState({
+          shapes: parsed.shapes,
+          width: parsed.width,
+          height: parsed.height,
+          rawSvg: p.svgData,
+          fileName: p.name,
+        });
+      } catch {
+        toast({ title: "Could not restore SVG from saved project", variant: "destructive" });
+      }
+    }
+    setHydratedForId(p.id);
+  }, [loadedProject.data, hydratedForId, routeProjectId, toast]);
 
   const handleSVGLoad = useCallback(
     (content: string, fileName: string) => {
@@ -1124,6 +1164,7 @@ export default function Studio() {
         svgData: svgState.rawSvg,
         extrudeDepth: settings.totalDepth,
         keycapSize: settings.keycapSize,
+        settings: settings as unknown as FidgetSettingsBlob,
       };
       if (projectId) {
         await updateProject.mutateAsync({ id: projectId, data: payload });

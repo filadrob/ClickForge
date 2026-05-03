@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import { projectsTable } from "@workspace/db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import {
   CreateProjectBody,
   UpdateProjectBody,
@@ -32,6 +32,7 @@ function toApiProject(p: typeof projectsTable.$inferSelect) {
     extrudeDepth: p.extrudeDepth,
     keycapSize: p.keycapSize,
     pegRadius: p.pegRadius,
+    settings: p.settings ?? null,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
   };
@@ -57,7 +58,7 @@ router.post("/projects", requireAuth, async (req: any, res: any) => {
     return res.status(400).json({ error: parsed.error });
   }
   try {
-    const { name, svgData, extrudeDepth = 4, keycapSize = 14, pegRadius = 3.5 } = parsed.data;
+    const { name, svgData, extrudeDepth = 4, keycapSize = 14, pegRadius = 3.5, settings } = parsed.data;
     const [project] = await db
       .insert(projectsTable)
       .values({
@@ -67,6 +68,7 @@ router.post("/projects", requireAuth, async (req: any, res: any) => {
         extrudeDepth,
         keycapSize,
         pegRadius,
+        settings: settings ?? null,
       })
       .returning();
     res.status(201).json(toApiProject(project));

@@ -26,6 +26,10 @@ export const ListProjectsResponseItem = zod.object({
   extrudeDepth: zod.number().describe("Extrusion depth in mm"),
   keycapSize: zod.number().describe("Keycap square hole size in mm"),
   pegRadius: zod.number().describe("Circular peg radius in mm"),
+  settings: zod
+    .record(zod.string(), zod.unknown())
+    .nullish()
+    .describe("Full studio settings blob"),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -44,6 +48,10 @@ export const CreateProjectBody = zod.object({
   extrudeDepth: zod.number().default(createProjectBodyExtrudeDepthDefault),
   keycapSize: zod.number().default(createProjectBodyKeycapSizeDefault),
   pegRadius: zod.number().default(createProjectBodyPegRadiusDefault),
+  settings: zod
+    .record(zod.string(), zod.unknown())
+    .optional()
+    .describe("Full studio settings blob"),
 });
 
 /**
@@ -61,6 +69,10 @@ export const GetProjectStatsResponse = zod.object({
       extrudeDepth: zod.number().describe("Extrusion depth in mm"),
       keycapSize: zod.number().describe("Keycap square hole size in mm"),
       pegRadius: zod.number().describe("Circular peg radius in mm"),
+      settings: zod
+        .record(zod.string(), zod.unknown())
+        .nullish()
+        .describe("Full studio settings blob"),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     })
@@ -82,6 +94,10 @@ export const GetProjectResponse = zod.object({
   extrudeDepth: zod.number().describe("Extrusion depth in mm"),
   keycapSize: zod.number().describe("Keycap square hole size in mm"),
   pegRadius: zod.number().describe("Circular peg radius in mm"),
+  settings: zod
+    .record(zod.string(), zod.unknown())
+    .nullish()
+    .describe("Full studio settings blob"),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -99,6 +115,10 @@ export const UpdateProjectBody = zod.object({
   extrudeDepth: zod.number().optional(),
   keycapSize: zod.number().optional(),
   pegRadius: zod.number().optional(),
+  settings: zod
+    .record(zod.string(), zod.unknown())
+    .optional()
+    .describe("Full studio settings blob"),
 });
 
 export const UpdateProjectResponse = zod.object({
@@ -109,6 +129,10 @@ export const UpdateProjectResponse = zod.object({
   extrudeDepth: zod.number().describe("Extrusion depth in mm"),
   keycapSize: zod.number().describe("Keycap square hole size in mm"),
   pegRadius: zod.number().describe("Circular peg radius in mm"),
+  settings: zod
+    .record(zod.string(), zod.unknown())
+    .nullish()
+    .describe("Full studio settings blob"),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });

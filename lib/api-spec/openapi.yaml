@@ -171,6 +171,11 @@ components:
       required:
         - status
 
+    FidgetSettingsBlob:
+      type: object
+      description: Full studio settings blob — all sliders, toggles, and colors
+      additionalProperties: true
+
     Project:
       type: object
       properties:
@@ -192,6 +197,10 @@ components:
         pegRadius:
           type: number
           description: Circular peg radius in mm
+        settings:
+          $ref: "#/components/schemas/FidgetSettingsBlob"
+          nullable: true
+          description: Full studio settings blob
         createdAt:
           type: string
           format: date-time
@@ -225,6 +234,9 @@ components:
         pegRadius:
           type: number
           default: 3.5
+        settings:
+          $ref: "#/components/schemas/FidgetSettingsBlob"
+          description: Full studio settings blob
       required:
         - name
         - svgData
@@ -242,6 +254,9 @@ components:
           type: number
         pegRadius:
           type: number
+        settings:
+          $ref: "#/components/schemas/FidgetSettingsBlob"
+          description: Full studio settings blob
 
     ProjectStats:
       type: object

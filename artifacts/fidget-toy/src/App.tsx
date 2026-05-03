@@ -164,6 +164,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
           <Route path="/studio" component={() => <ProtectedRoute component={Studio} />} />
+          <Route path="/studio/:id" component={() => <ProtectedRoute component={Studio} />} />
           <Route path="/projects" component={() => <ProtectedRoute component={Projects} />} />
           <Route component={NotFound} />
         </Switch>

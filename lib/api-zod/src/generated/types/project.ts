@@ -5,6 +5,7 @@
  * SVG Fidget Toy Creator API
  * OpenAPI spec version: 0.1.0
  */
+import type { FidgetSettingsBlob } from "./fidgetSettingsBlob";
 
 export interface Project {
   id: number;
@@ -18,6 +19,8 @@ export interface Project {
   keycapSize: number;
   /** Circular peg radius in mm */
   pegRadius: number;
+  /** Full studio settings blob */
+  settings?: FidgetSettingsBlob | null;
   createdAt: Date;
   updatedAt: Date;
 }

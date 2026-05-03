@@ -5,6 +5,7 @@
  * SVG Fidget Toy Creator API
  * OpenAPI spec version: 0.1.0
  */
+import type { FidgetSettingsBlob } from "./fidgetSettingsBlob";
 
 export interface CreateProjectBody {
   name: string;
@@ -12,4 +13,6 @@ export interface CreateProjectBody {
   extrudeDepth?: number;
   keycapSize?: number;
   pegRadius?: number;
+  /** Full studio settings blob */
+  settings?: FidgetSettingsBlob;
 }

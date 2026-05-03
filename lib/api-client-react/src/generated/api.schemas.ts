@@ -9,6 +9,13 @@ export interface HealthStatus {
   status: string;
 }
 
+/**
+ * Full studio settings blob — all sliders, toggles, and colors
+ */
+export interface FidgetSettingsBlob {
+  [key: string]: unknown;
+}
+
 export interface Project {
   id: number;
   userId: string;
@@ -21,6 +28,8 @@ export interface Project {
   keycapSize: number;
   /** Circular peg radius in mm */
   pegRadius: number;
+  /** Full studio settings blob */
+  settings?: FidgetSettingsBlob | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -31,6 +40,8 @@ export interface CreateProjectBody {
   extrudeDepth?: number;
   keycapSize?: number;
   pegRadius?: number;
+  /** Full studio settings blob */
+  settings?: FidgetSettingsBlob;
 }
 
 export interface UpdateProjectBody {
@@ -39,6 +50,8 @@ export interface UpdateProjectBody {
   extrudeDepth?: number;
   keycapSize?: number;
   pegRadius?: number;
+  /** Full studio settings blob */
+  settings?: FidgetSettingsBlob;
 }
 
 export interface ProjectStats {

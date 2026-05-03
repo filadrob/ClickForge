@@ -7,6 +7,7 @@
  */
 
 export * from "./createProjectBody";
+export * from "./fidgetSettingsBlob";
 export * from "./healthStatus";
 export * from "./project";
 export * from "./projectStats";

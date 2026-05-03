@@ -182,7 +182,7 @@ export default function Projects() {
                     {new Date(project.updatedAt).toLocaleDateString()}
                   </p>
                   <div className="flex gap-2 mt-3">
-                    <Link href="/studio" className="flex-1">
+                    <Link href={`/studio/${project.id}`} className="flex-1">
                       <Button
                         size="sm"
                         variant="outline"
