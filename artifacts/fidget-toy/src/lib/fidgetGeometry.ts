@@ -96,6 +96,8 @@ export interface OuterShellGeometries {
     innerFillWalls: number;
   };
   floorDepth: number;
+  /** Actual bounding box of the outer wall's outer boundary (mm). */
+  bounds: { w: number; h: number };
 }
 
 export interface InnerClickerGeometries {
@@ -119,6 +121,8 @@ export interface InnerClickerGeometries {
   bossHeight: number;
   /** Height of the solid base section (= bossHeight − crossDepth, min 0.05 mm). */
   bossBaseHeight: number;
+  /** Actual bounding box of the clicker's outer boundary (mm). */
+  bounds: { w: number; h: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -214,6 +218,8 @@ export function createOuterShellGeometries(
       innerFillWalls: floorDepth + pinDepth,
     },
     floorDepth,
+    // Outer wall's OUTER boundary — the true physical footprint of the shell.
+    bounds: boundingBoxMm(outerShape),
   };
 }
 
@@ -345,6 +351,8 @@ export function createInnerClickerGeometries(
     bossFloorGap,
     bossHeight,
     bossBaseHeight,
+    // Clicker's outer boundary — smaller than shell by insetAmount + clearance.
+    bounds: boundingBoxMm(clickerShape),
   };
 }
 

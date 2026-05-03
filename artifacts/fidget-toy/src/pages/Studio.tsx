@@ -61,6 +61,7 @@ function OuterShellGroup({
   innerFillPinSectionRef,
   innerFillWallsRef,
   fitCheck,
+  onBounds,
 }: {
   shapes: THREE.Shape[];
   settings: FidgetSettings;
@@ -71,12 +72,16 @@ function OuterShellGroup({
   innerFillPinSectionRef: React.RefObject<THREE.Mesh | null>;
   innerFillWallsRef: React.RefObject<THREE.Mesh | null>;
   fitCheck: boolean;
+  onBounds?: (b: { w: number; h: number }) => void;
 }) {
   const geos = useMemo(
     () => createOuterShellGeometries(shapes, settings, svgWidth, svgHeight),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [shapes, settings, svgWidth, svgHeight]
   );
+
+  // Report actual shell footprint to parent whenever geometry changes.
+  useEffect(() => { onBounds?.(geos.bounds); }, [geos, onBounds]);
 
   const flip = settings.flipShell ?? false;
   // Geometry runs from local z=0 to z=totalDepth. When unflipped we centre it
@@ -144,6 +149,7 @@ function InnerClickerGroup({
   bossBaseRef,
   bossMainRef,
   fitCheck,
+  onBounds,
 }: {
   shapes: THREE.Shape[];
   settings: FidgetSettings;
@@ -154,12 +160,16 @@ function InnerClickerGroup({
   bossBaseRef: React.RefObject<THREE.Mesh | null>;
   bossMainRef: React.RefObject<THREE.Mesh | null>;
   fitCheck: boolean;
+  onBounds?: (b: { w: number; h: number }) => void;
 }) {
   const geos = useMemo(
     () => createInnerClickerGeometries(shapes, settings, svgWidth, svgHeight),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [shapes, settings, svgWidth, svgHeight]
   );
+
+  // Report actual clicker footprint to parent whenever geometry changes.
+  useEffect(() => { onBounds?.(geos.bounds); }, [geos, onBounds]);
 
   const { totalDepth, innerFillDepth } = settings;
   const { clickerTotalDepth, clickerFloorDepth, bossFloorGap, bossHeight, bossBaseHeight } = geos;
@@ -425,6 +435,8 @@ export default function Studio() {
   const [fitCheckMode, setFitCheckMode] = useState(false);
   const [showDimensions, setShowDimensions] = useState(true);
   const [recenterKey, setRecenterKey] = useState(0);
+  const [shellBounds, setShellBounds] = useState({ w: 0, h: 0 });
+  const [clickerBounds, setClickerBounds] = useState({ w: 0, h: 0 });
   // Draft value for the size input — lets the user finish typing before
   // the 3D scene recalculates.  Committed on blur or Enter.
   const [draftSizeMm, setDraftSizeMm] = useState<string>(String(DEFAULT_SETTINGS.targetSizeMm));
@@ -1157,6 +1169,7 @@ export default function Studio() {
                       innerFillPinSectionRef={innerFillPinSectionRef}
                       innerFillWallsRef={innerFillWallsRef}
                       fitCheck={fitCheckMode}
+                      onBounds={setShellBounds}
                     />
                     <InnerClickerGroup
                       shapes={svgState.shapes}
@@ -1168,6 +1181,7 @@ export default function Studio() {
                       bossBaseRef={bossBaseRef}
                       bossMainRef={bossMainRef}
                       fitCheck={fitCheckMode}
+                      onBounds={setClickerBounds}
                     />
                   </>
                 ) : (
@@ -1202,17 +1216,19 @@ export default function Studio() {
             {/* Dimension annotations — world-space, outside the rotation group */}
             {svgState && showDimensions && !fitCheckMode && sceneMetrics.modelW > 0 && (
               <>
+                {/* Shell: use actual outer-wall bounding box */}
                 <ModelDimensionAnnotation
                   centerX={-sceneMetrics.separationX}
-                  widthMm={sceneMetrics.modelW}
-                  heightMm={sceneMetrics.modelH}
+                  widthMm={shellBounds.w}
+                  heightMm={shellBounds.h}
                   color="#8b8fff"
                   lineY={sceneMetrics.gridY}
                 />
+                {/* Clicker: use actual clicker-body bounding box */}
                 <ModelDimensionAnnotation
                   centerX={sceneMetrics.separationX}
-                  widthMm={sceneMetrics.modelW}
-                  heightMm={sceneMetrics.modelH}
+                  widthMm={clickerBounds.w}
+                  heightMm={clickerBounds.h}
                   color="#34d399"
                   lineY={sceneMetrics.gridY}
                 />
