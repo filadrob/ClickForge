@@ -1206,12 +1206,17 @@ export default function Studio() {
                       onChange={(e) => setSetting("svgIsClickerShape", e.target.checked)}
                       className="mt-0.5 accent-emerald-500"
                     />
-                    <div>
+                    <div className="flex-1">
                       <p className="text-xs font-medium text-foreground leading-tight">Use as inner clicker shape</p>
                       <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">
                         SVG becomes the clicker body — the outer shell is generated around it
                       </p>
                     </div>
+                    <ResetButton
+                      isDefault={settings.svgIsClickerShape === DEFAULT_SETTINGS.svgIsClickerShape}
+                      onReset={() => setSetting("svgIsClickerShape", DEFAULT_SETTINGS.svgIsClickerShape)}
+                      defaultLabel={DEFAULT_SETTINGS.svgIsClickerShape ? "on" : "off"}
+                    />
                   </label>
                 </div>
               ) : (
@@ -1350,6 +1355,11 @@ export default function Studio() {
                     className="h-4 w-4 rounded accent-primary"
                   />
                   <span className="text-sm">Mirror left-right</span>
+                  <ResetButton
+                    isDefault={(settings.mirrorShell ?? false) === DEFAULT_SETTINGS.mirrorShell}
+                    onReset={() => setSetting("mirrorShell", DEFAULT_SETTINGS.mirrorShell)}
+                    defaultLabel={DEFAULT_SETTINGS.mirrorShell ? "on" : "off"}
+                  />
                 </label>
                 <SliderRow
                   label="Total depth"
@@ -1359,6 +1369,8 @@ export default function Studio() {
                   step={0.01}
                   unit="mm"
                   onChange={(v) => setSetting("totalDepth", v)}
+                  defaultValue={DEFAULT_SETTINGS.totalDepth}
+                  onReset={() => setSetting("totalDepth", DEFAULT_SETTINGS.totalDepth)}
                   {...hl(["shell_outer"])}
                 />
                 <SliderRow
@@ -1369,6 +1381,8 @@ export default function Studio() {
                   step={0.01}
                   unit="mm"
                   onChange={(v) => setSetting("innerFillDepth", v)}
+                  defaultValue={DEFAULT_SETTINGS.innerFillDepth}
+                  onReset={() => setSetting("innerFillDepth", DEFAULT_SETTINGS.innerFillDepth)}
                   {...hl(["shell_floor", "shell_walls"])}
                 />
                 <SliderRow
@@ -1379,6 +1393,8 @@ export default function Studio() {
                   step={0.01}
                   unit="mm"
                   onChange={(v) => setSetting("insetAmount", v)}
+                  defaultValue={DEFAULT_SETTINGS.insetAmount}
+                  onReset={() => setSetting("insetAmount", DEFAULT_SETTINGS.insetAmount)}
                   {...hl(["shell_outer", "shell_floor", "shell_walls"])}
                 />
               </div>
@@ -1410,6 +1426,8 @@ export default function Studio() {
                       step={0.1}
                       unit="mm"
                       onChange={(v) => setSetting("keyRingOuterDiameter", v)}
+                      defaultValue={DEFAULT_SETTINGS.keyRingOuterDiameter}
+                      onReset={() => setSetting("keyRingOuterDiameter", DEFAULT_SETTINGS.keyRingOuterDiameter)}
                     />
                     <SliderRow
                       label="Hole diameter"
@@ -1419,6 +1437,8 @@ export default function Studio() {
                       step={0.1}
                       unit="mm"
                       onChange={(v) => setSetting("keyRingHoleDiameter", v)}
+                      defaultValue={DEFAULT_SETTINGS.keyRingHoleDiameter}
+                      onReset={() => setSetting("keyRingHoleDiameter", DEFAULT_SETTINGS.keyRingHoleDiameter)}
                     />
                     <SliderRow
                       label="Thickness (Z)"
@@ -1435,6 +1455,8 @@ export default function Studio() {
                       step={0.1}
                       unit="mm"
                       onChange={(v) => setSetting("keyRingThickness", v)}
+                      defaultValue={DEFAULT_SETTINGS.keyRingThickness}
+                      onReset={() => setSetting("keyRingThickness", DEFAULT_SETTINGS.keyRingThickness)}
                     />
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       Lug sits flush with the bottom of the shell and stays within the solid floor so it never blocks the inner clicker pocket.
@@ -1467,6 +1489,11 @@ export default function Studio() {
                     className="h-4 w-4 rounded accent-primary"
                   />
                   <span className="text-sm">Mirror left-right</span>
+                  <ResetButton
+                    isDefault={(settings.mirrorClicker ?? false) === DEFAULT_SETTINGS.mirrorClicker}
+                    onReset={() => setSetting("mirrorClicker", DEFAULT_SETTINGS.mirrorClicker)}
+                    defaultLabel={DEFAULT_SETTINGS.mirrorClicker ? "on" : "off"}
+                  />
                 </label>
                 <SliderRow
                   label="Total thickness"
@@ -1476,6 +1503,8 @@ export default function Studio() {
                   step={0.01}
                   unit="mm"
                   onChange={(v) => setSetting("clickerTotalDepth", v)}
+                  defaultValue={DEFAULT_SETTINGS.clickerTotalDepth}
+                  onReset={() => setSetting("clickerTotalDepth", DEFAULT_SETTINGS.clickerTotalDepth)}
                   {...hl(["click_floor", "click_walls"])}
                 />
                 <SliderRow
@@ -1486,6 +1515,8 @@ export default function Studio() {
                   step={0.01}
                   unit="mm"
                   onChange={(v) => setSetting("clickerFloorDepth", v)}
+                  defaultValue={DEFAULT_SETTINGS.clickerFloorDepth}
+                  onReset={() => setSetting("clickerFloorDepth", DEFAULT_SETTINGS.clickerFloorDepth)}
                   {...hl(["click_floor"])}
                 />
               </div>
@@ -1505,6 +1536,8 @@ export default function Studio() {
                   step={0.01}
                   unit="mm"
                   onChange={(v) => setSetting("clearanceMm", v)}
+                  defaultValue={DEFAULT_SETTINGS.clearanceMm}
+                  onReset={() => setSetting("clearanceMm", DEFAULT_SETTINGS.clearanceMm)}
                   {...hl(
                     (settings.svgIsClickerShape ?? false)
                       ? ["shell_outer", "shell_floor", "shell_walls"]
@@ -1552,6 +1585,8 @@ export default function Studio() {
                       step={0.01}
                       unit="mm"
                       onChange={(v) => setSetting("keycapPocketDepth", v)}
+                      defaultValue={DEFAULT_SETTINGS.keycapPocketDepth}
+                      onReset={() => setSetting("keycapPocketDepth", DEFAULT_SETTINGS.keycapPocketDepth)}
                       {...hl(["shell_walls"])}
                     />
                     <SliderRow
@@ -1562,6 +1597,8 @@ export default function Studio() {
                       step={0.01}
                       unit="mm"
                       onChange={(v) => setSetting("keycapSize", v)}
+                      defaultValue={DEFAULT_SETTINGS.keycapSize}
+                      onReset={() => setSetting("keycapSize", DEFAULT_SETTINGS.keycapSize)}
                       {...hl(["shell_walls"])}
                     />
                     <SliderRow
@@ -1572,6 +1609,8 @@ export default function Studio() {
                       step={0.01}
                       unit="mm"
                       onChange={(v) => setSetting("clickerSquareSize", v)}
+                      defaultValue={DEFAULT_SETTINGS.clickerSquareSize}
+                      onReset={() => setSetting("clickerSquareSize", DEFAULT_SETTINGS.clickerSquareSize)}
                       {...hl(["click_walls"])}
                     />
                     <SliderRow
@@ -1582,6 +1621,8 @@ export default function Studio() {
                       step={0.01}
                       unit="mm"
                       onChange={(v) => setSetting("clickerSquareDepth", v)}
+                      defaultValue={DEFAULT_SETTINGS.clickerSquareDepth}
+                      onReset={() => setSetting("clickerSquareDepth", DEFAULT_SETTINGS.clickerSquareDepth)}
                       {...hl(["click_walls"])}
                     />
                   </div>
@@ -1602,6 +1643,8 @@ export default function Studio() {
                       step={0.01}
                       unit="mm"
                       onChange={(v) => setSetting("bossDiameter", v)}
+                      defaultValue={DEFAULT_SETTINGS.bossDiameter}
+                      onReset={() => setSetting("bossDiameter", DEFAULT_SETTINGS.bossDiameter)}
                       {...hl(["click_boss"])}
                     />
                     <SliderRow
@@ -1612,6 +1655,8 @@ export default function Studio() {
                       step={0.01}
                       unit="mm"
                       onChange={(v) => setSetting("bossHeight", v)}
+                      defaultValue={DEFAULT_SETTINGS.bossHeight}
+                      onReset={() => setSetting("bossHeight", DEFAULT_SETTINGS.bossHeight)}
                       {...hl(["click_boss"])}
                     />
                     <SliderRow
@@ -1622,6 +1667,8 @@ export default function Studio() {
                       step={0.01}
                       unit="mm"
                       onChange={(v) => setSetting("bossFloorGap", v)}
+                      defaultValue={DEFAULT_SETTINGS.bossFloorGap}
+                      onReset={() => setSetting("bossFloorGap", DEFAULT_SETTINGS.bossFloorGap)}
                       {...hl(["click_boss"])}
                     />
                     <div className="pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
@@ -1635,6 +1682,8 @@ export default function Studio() {
                       step={0.01}
                       unit="mm"
                       onChange={(v) => setSetting("crossSize", v)}
+                      defaultValue={DEFAULT_SETTINGS.crossSize}
+                      onReset={() => setSetting("crossSize", DEFAULT_SETTINGS.crossSize)}
                       {...hl(["click_boss"])}
                     />
                     <SliderRow
@@ -1645,6 +1694,8 @@ export default function Studio() {
                       step={0.01}
                       unit="mm"
                       onChange={(v) => setSetting("crossDepth", v)}
+                      defaultValue={DEFAULT_SETTINGS.crossDepth}
+                      onReset={() => setSetting("crossDepth", DEFAULT_SETTINGS.crossDepth)}
                       {...hl(["click_boss"])}
                     />
                     <SliderRow
@@ -1655,6 +1706,8 @@ export default function Studio() {
                       step={0.01}
                       unit="mm"
                       onChange={(v) => setSetting("crossArmWidth", v)}
+                      defaultValue={DEFAULT_SETTINGS.crossArmWidth}
+                      onReset={() => setSetting("crossArmWidth", DEFAULT_SETTINGS.crossArmWidth)}
                       {...hl(["click_boss"])}
                     />
                   </div>
@@ -1671,6 +1724,11 @@ export default function Studio() {
                     />
                     <span className="text-sm">Cherry MX 5-pin holes</span>
                     <InfoTooltip text="Punches the Cherry MX 5-pin footprint into the deepest section of the pocket: Ø4 mm center guide · Ø1.8 mm retention pegs (±5.08 mm) · Ø1.5 mm contacts (±3.81 mm / −2.54 mm). The pin section sits below the keycap square — from the pocket floor upward." />
+                    <ResetButton
+                      isDefault={settings.pinHolesEnabled === DEFAULT_SETTINGS.pinHolesEnabled}
+                      onReset={() => setSetting("pinHolesEnabled", DEFAULT_SETTINGS.pinHolesEnabled)}
+                      defaultLabel={DEFAULT_SETTINGS.pinHolesEnabled ? "on" : "off"}
+                    />
                   </label>
                   {settings.pinHolesEnabled && (
                     <div className="space-y-3 pl-6">
@@ -1682,6 +1740,8 @@ export default function Studio() {
                         step={0.01}
                         unit="mm"
                         onChange={(v) => setSetting("pinHoleDepth", v)}
+                        defaultValue={DEFAULT_SETTINGS.pinHoleDepth}
+                        onReset={() => setSetting("pinHoleDepth", DEFAULT_SETTINGS.pinHoleDepth)}
                         {...hl(["shell_pin"])}
                       />
                       <SliderRow
@@ -1692,6 +1752,8 @@ export default function Studio() {
                         step={0.01}
                         unit="mm"
                         onChange={(v) => setSetting("pinHoleRadius", v)}
+                        defaultValue={DEFAULT_SETTINGS.pinHoleRadius}
+                        onReset={() => setSetting("pinHoleRadius", DEFAULT_SETTINGS.pinHoleRadius)}
                         {...hl(["shell_pin"])}
                       />
                     </div>
@@ -1712,6 +1774,8 @@ export default function Studio() {
                     step={0.1}
                     unit="mm"
                     onChange={(v) => setSetting("pocketOffsetX", v)}
+                    defaultValue={DEFAULT_SETTINGS.pocketOffsetX}
+                    onReset={() => setSetting("pocketOffsetX", DEFAULT_SETTINGS.pocketOffsetX)}
                     {...hl(["shell_walls", "click_boss", "click_walls"])}
                   />
                   <SliderRow
@@ -1722,6 +1786,8 @@ export default function Studio() {
                     step={0.1}
                     unit="mm"
                     onChange={(v) => setSetting("pocketOffsetY", v)}
+                    defaultValue={DEFAULT_SETTINGS.pocketOffsetY}
+                    onReset={() => setSetting("pocketOffsetY", DEFAULT_SETTINGS.pocketOffsetY)}
                     {...hl(["shell_walls", "click_boss", "click_walls"])}
                   />
                 </div>
@@ -2063,6 +2129,36 @@ export default function Studio() {
 
 // ─── Small sub-components ─────────────────────────────────────────────────
 
+function ResetButton({
+  isDefault,
+  onReset,
+  defaultLabel,
+}: {
+  isDefault: boolean;
+  onReset: () => void;
+  defaultLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onReset();
+      }}
+      disabled={isDefault}
+      title={isDefault ? "Already at default" : `Reset to ${defaultLabel}`}
+      className={`ml-auto flex items-center justify-center rounded p-0.5 transition-colors ${
+        isDefault
+          ? "opacity-30 cursor-default"
+          : "text-orange-500 hover:text-orange-400 hover:bg-accent/50 cursor-pointer"
+      }`}
+    >
+      <RotateCcw className="h-3 w-3" />
+    </button>
+  );
+}
+
 function SliderRow({
   label,
   value,
@@ -2073,6 +2169,8 @@ function SliderRow({
   onChange,
   onHighlightIn,
   onHighlightOut,
+  defaultValue,
+  onReset,
 }: {
   label: string;
   value: number;
@@ -2083,6 +2181,8 @@ function SliderRow({
   onChange: (v: number) => void;
   onHighlightIn?: () => void;
   onHighlightOut?: () => void;
+  defaultValue?: number;
+  onReset?: () => void;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
 
@@ -2091,6 +2191,9 @@ function SliderRow({
     if (!isNaN(n)) onChange(Math.min(max, Math.max(min, n)));
     setDraft(null);
   };
+
+  const showReset = defaultValue !== undefined && onReset !== undefined;
+  const isDefault = showReset && value === defaultValue;
 
   return (
     <div onMouseEnter={onHighlightIn} onMouseLeave={onHighlightOut}>
@@ -2112,6 +2215,21 @@ function SliderRow({
             className="w-16 text-xs font-mono text-right bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1 py-0.5 text-muted-foreground focus:text-foreground transition-colors"
           />
           <span className="text-xs text-muted-foreground">{unit}</span>
+          {showReset && (
+            <button
+              type="button"
+              onClick={onReset}
+              disabled={isDefault}
+              title={isDefault ? "Already at default" : `Reset to ${defaultValue}`}
+              className={`ml-0.5 flex items-center justify-center rounded p-0.5 transition-colors ${
+                isDefault
+                  ? "opacity-30 cursor-default"
+                  : "text-orange-500 hover:text-orange-400 hover:bg-accent/50 cursor-pointer"
+              }`}
+            >
+              <RotateCcw className="h-3 w-3" />
+            </button>
+          )}
         </div>
       </div>
       <Slider
