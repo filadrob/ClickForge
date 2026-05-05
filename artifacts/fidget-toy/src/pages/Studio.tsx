@@ -1883,9 +1883,59 @@ export default function Studio() {
                   />
                 </div>
                 <p className="text-[10px] text-muted-foreground/70 mt-2 leading-relaxed">
-                  Switch to <button type="button" className="underline hover:text-foreground" onClick={() => setSidebarMode("advanced")}>Advanced</button> to save your project, export STL/3MF/OBJ, and tweak shell depth, key ring, fit clearance, and per-region colors.
+                  Switch to <button type="button" className="underline hover:text-foreground" onClick={() => setSidebarMode("advanced")}>Advanced</button> to tweak shell depth, key ring, fit clearance, and per-region colors.
                 </p>
               </div>
+            )}
+
+            {/* Save + Export — shown in both Simple and Advanced mode */}
+            {sidebarMode === "simple" && (
+            <div className="space-y-2">
+              <Button
+                className="w-full"
+                onClick={handleSave}
+                disabled={isSaving || !svgState}
+              >
+                {isGuest ? <LogIn className="h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                {isSaving
+                  ? "Saving…"
+                  : isGuest
+                    ? "Sign in to save"
+                    : projectId ? "Update Project" : "Save Project"}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleExportSTL}
+                disabled={!svgState}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export STL
+                {isGuest && (
+                  <span className="ml-2 text-[10px] text-muted-foreground">
+                    ({Math.max(0, 1 - getAnonStlExportCount())} free)
+                  </span>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleExport3MF}
+                disabled={!svgState}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {isPremium ? "Export 3MF" : <PremiumLabel>Export 3MF</PremiumLabel>}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleExportOBJ}
+                disabled={!svgState}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {isPremium ? "Export OBJ" : <PremiumLabel>Export OBJ</PremiumLabel>}
+              </Button>
+            </div>
             )}
 
             {/* Settings header + reset (advanced only) */}
