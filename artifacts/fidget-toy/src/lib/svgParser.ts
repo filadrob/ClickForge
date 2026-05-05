@@ -99,6 +99,43 @@ function shapeBounds(shapes: THREE.Shape[]): { minX: number; minY: number; w: nu
 }
 
 /**
+ * Convert <polygon> and <polyline> elements to equivalent <path> elements
+ * so SVGLoader receives a consistent element type and normalizes winding
+ * the same way it does for <path>-based SVGs.
+ */
+function convertPolygonsToPath(doc: Document): void {
+  const NS = "http://www.w3.org/2000/svg";
+  for (const tag of ["polygon", "polyline"]) {
+    for (const el of Array.from(doc.querySelectorAll(tag))) {
+      const pointsAttr = el.getAttribute("points") ?? "";
+      const nums = pointsAttr.trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
+      if (nums.length < 4) continue;
+
+      const coords: [number, number][] = [];
+      for (let i = 0; i + 1 < nums.length; i += 2) {
+        coords.push([nums[i], nums[i + 1]]);
+      }
+
+      const d =
+        `M ${coords[0][0]} ${coords[0][1]} ` +
+        coords.slice(1).map(([x, y]) => `L ${x} ${y}`).join(" ") +
+        (tag === "polygon" ? " Z" : "");
+
+      const path = doc.createElementNS(NS, "path");
+      path.setAttribute("d", d);
+
+      for (const attr of Array.from(el.attributes)) {
+        if (attr.name !== "points") {
+          path.setAttribute(attr.name, attr.value);
+        }
+      }
+
+      el.parentElement?.replaceChild(path, el);
+    }
+  }
+}
+
+/**
  * Run the same two-pass DOM normalisation used by `parseSVGContent`:
  *   pass 1 — translate the viewBox origin to (0, 0)
  *   pass 2 — wrap content so the tight bbox origin is also (0, 0)
@@ -117,6 +154,9 @@ function normalizeSvgForParsing(svgContent: string): { svg: string; width: numbe
       if (isInvisibleRect(rect)) rect.parentElement?.removeChild(rect);
     }
   }
+
+  // Convert <polygon>/<polyline> to <path> for consistent SVGLoader winding behaviour
+  convertPolygonsToPath(doc);
 
   let vbX = 0, vbY = 0, vbW = 100, vbH = 100;
   if (svgEl) {

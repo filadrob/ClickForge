@@ -1,0 +1,45 @@
+In artifacts/fidget-toy/src/lib/svgParser.ts, there is a bug that causes <polygon> SVG elements to render incorrectly as 3D geometry. The inner clicker ends up with a chunk missing because the polygon's winding direction is handled inconsistently.
+The root cause: SVG <polygon> elements wind CCW in Y-down SVG space, which becomes CW in THREE.js's Y-up space. SVGLoader.createShapes() treats CW paths as holes rather than outer boundaries, and the winding corrections applied further down the pipeline (transformToMm's Y-flip, insetPolygon's reversal) were written assuming SVGLoader has already normalized winding — which it does for <path> elements but not reliably for <polygon>.
+The fix is to convert all <polygon> and <polyline> elements to <path> elements inside normalizeSvgForParsing, before SVGLoader ever sees them. This gives SVGLoader a consistent input type and makes the rest of the pipeline work correctly.
+Please add the following helper function to svgParser.ts:
+ts/**
+ * Convert <polygon> and <polyline> elements to equivalent <path> elements
+ * so SVGLoader receives a consistent element type and normalizes winding
+ * the same way it does for <path>-based SVGs.
+ */
+function convertPolygonsToPath(doc: Document): void {
+  const NS = "http://www.w3.org/2000/svg";
+  for (const tag of ["polygon", "polyline"]) {
+    for (const el of Array.from(doc.querySelectorAll(tag))) {
+      const pointsAttr = el.getAttribute("points") ?? "";
+      const nums = pointsAttr.trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
+      if (nums.length < 4) continue;
+
+      const coords: [number, number][] = [];
+      for (let i = 0; i + 1 < nums.length; i += 2) {
+        coords.push([nums[i], nums[i + 1]]);
+      }
+
+      const d =
+        `M ${coords[0][0]} ${coords[0][1]} ` +
+        coords.slice(1).map(([x, y]) => `L ${x} ${y}`).join(" ") +
+        (tag === "polygon" ? " Z" : "");
+
+      const path = doc.createElementNS(NS, "path");
+      path.setAttribute("d", d);
+
+      // Copy all attributes except "points"
+      for (const attr of Array.from(el.attributes)) {
+        if (attr.name !== "points") {
+          path.setAttribute(attr.name, attr.value);
+        }
+      }
+
+      el.parentElement?.replaceChild(path, el);
+    }
+  }
+}
+Then call it inside normalizeSvgForParsing, right after the invisible <rect> removal block:
+ts// Convert <polygon>/<polyline> to <path> for consistent SVGLoader winding behaviour
+convertPolygonsToPath(doc);
+No other changes are needed.
