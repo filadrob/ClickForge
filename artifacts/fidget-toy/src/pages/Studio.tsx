@@ -1092,22 +1092,36 @@ export default function Studio() {
   });
   const updatePrefs = useUpdateUserPreferences();
   const prefsHydratedRef = useRef(false);
+  // Track the last sidebarMode we've sent to the server so we don't re-fire
+  // the sync effect on every render (updatePrefs is a fresh reference each
+  // render, and userPrefs.data briefly lags after mutations + invalidation,
+  // which previously caused a runaway PUT loop).
+  const lastSyncedModeRef = useRef<SidebarMode | null>(null);
   useEffect(() => {
     if (isGuest || prefsHydratedRef.current || !userPrefs.data) return;
     prefsHydratedRef.current = true;
     const remote = userPrefs.data.sidebarMode === "advanced" ? "advanced" : "simple";
+    lastSyncedModeRef.current = remote;
     if (remote !== sidebarMode) setSidebarMode(remote);
   }, [isGuest, userPrefs.data, sidebarMode]);
   useEffect(() => {
     if (isGuest || !prefsHydratedRef.current) return;
-    if (userPrefs.data?.sidebarMode === sidebarMode) return;
-    void updatePrefs
+    if (lastSyncedModeRef.current === sidebarMode) return;
+    lastSyncedModeRef.current = sidebarMode;
+    updatePrefs
       .mutateAsync({ data: { sidebarMode } })
       .then(() =>
         queryClient.invalidateQueries({ queryKey: getGetUserPreferencesQueryKey() }),
       )
-      .catch(() => { /* best effort; localStorage already kept it locally */ });
-  }, [isGuest, sidebarMode, userPrefs.data, updatePrefs, queryClient]);
+      .catch(() => {
+        // Best effort; localStorage already kept it locally. Clear the ref so
+        // a later render or value change can retry.
+        lastSyncedModeRef.current = null;
+      });
+    // Intentionally exclude updatePrefs / userPrefs.data / queryClient — they
+    // change references each render and would re-fire the effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGuest, sidebarMode]);
 
   /** Show the upgrade modal for a Premium-only feature. */
   const requirePremium = useCallback(
