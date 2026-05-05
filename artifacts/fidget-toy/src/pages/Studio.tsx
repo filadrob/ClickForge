@@ -1081,25 +1081,32 @@ export default function Studio() {
   const isGuest = tier === "guest";
   const [upgradeFeature, setUpgradeFeature] = useState<GatedFeature | null>(null);
   const [authAction, setAuthAction] = useState<string | null>(null);
-  // Always start in simple mode on every page load — don't restore from
-  // localStorage or server prefs.  Users can switch to Advanced manually.
-  const [sidebarMode, setSidebarMode] = useState<SidebarMode>("simple");
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() => loadSidebarMode("simple"));
+  // Local fallback so guests still get persistence via localStorage.
+  useEffect(() => { saveSidebarMode(sidebarMode); }, [sidebarMode]);
 
-  // For signed-in users, mirror mode changes to the server so the preference
-  // is available for other uses, but we intentionally don't restore it on load.
+  // For signed-in users, mirror the choice on the server so it follows
+  // them across browsers and devices.
   const userPrefs = useGetUserPreferences({
     query: { enabled: !isGuest, queryKey: ["/api/user/preferences"] },
   });
   const updatePrefs = useUpdateUserPreferences();
+  const prefsHydratedRef = useRef(false);
   useEffect(() => {
-    if (isGuest) return;
+    if (isGuest || prefsHydratedRef.current || !userPrefs.data) return;
+    prefsHydratedRef.current = true;
+    const remote = userPrefs.data.sidebarMode === "advanced" ? "advanced" : "simple";
+    if (remote !== sidebarMode) setSidebarMode(remote);
+  }, [isGuest, userPrefs.data, sidebarMode]);
+  useEffect(() => {
+    if (isGuest || !prefsHydratedRef.current) return;
     if (userPrefs.data?.sidebarMode === sidebarMode) return;
     void updatePrefs
       .mutateAsync({ data: { sidebarMode } })
       .then(() =>
         queryClient.invalidateQueries({ queryKey: getGetUserPreferencesQueryKey() }),
       )
-      .catch(() => { /* best effort */ });
+      .catch(() => { /* best effort; localStorage already kept it locally */ });
   }, [isGuest, sidebarMode, userPrefs.data, updatePrefs, queryClient]);
 
   /** Show the upgrade modal for a Premium-only feature. */
