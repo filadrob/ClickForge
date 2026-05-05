@@ -11,6 +11,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { svgToDataUri } from "@/lib/svgPreview";
 import {
   ChevronLeft,
   Plus,
@@ -166,10 +167,10 @@ export default function Projects() {
                 <CardHeader className="pb-2 pt-4 px-4">
                   {/* SVG preview */}
                   <div className="h-28 rounded-md bg-muted/50 flex items-center justify-center mb-2 overflow-hidden border border-border">
-                    <div
-                      className="max-h-full max-w-full"
-                      style={{ width: 80, height: 80 }}
-                      dangerouslySetInnerHTML={{ __html: project.svgData }}
+                    <img
+                      src={svgToDataUri(project.svgData)}
+                      alt={project.name}
+                      style={{ width: 80, height: 80, objectFit: "contain" }}
                     />
                   </div>
                 </CardHeader>

@@ -73,6 +73,10 @@ router.post("/projects", requireAuth, async (req: any, res: any) => {
   if (settingsError) {
     return res.status(400).json({ error: settingsError });
   }
+  const svgCreate = parsed.data.svgData.trim();
+  if (/<script[\s>]/i.test(svgCreate) || /\son[a-z]+\s*=/i.test(svgCreate)) {
+    return res.status(400).json({ error: "svgData contains disallowed content" });
+  }
   try {
     const tier = tierForSignedInUser();
     const [{ value: existing }] = await db
@@ -171,6 +175,12 @@ router.put("/projects/:id", requireAuth, async (req: any, res: any) => {
   const settingsError = validateSettings(bodyParsed.data.settings);
   if (settingsError) {
     return res.status(400).json({ error: settingsError });
+  }
+  if (bodyParsed.data.svgData !== undefined) {
+    const svgUpdate = bodyParsed.data.svgData.trim();
+    if (/<script[\s>]/i.test(svgUpdate) || /\son[a-z]+\s*=/i.test(svgUpdate)) {
+      return res.status(400).json({ error: "svgData contains disallowed content" });
+    }
   }
   try {
     const updates: Partial<typeof projectsTable.$inferInsert> = {
