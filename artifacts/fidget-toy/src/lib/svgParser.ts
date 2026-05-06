@@ -118,20 +118,86 @@ function inlineUseElements(doc: Document): void {
 }
 
 /**
- * Convert <polyline> elements to <polygon> by ensuring the point list forms
- * a closed shape. SVGLoader treats <polygon> as a closed filled path;
- * <polyline> is open and produces no geometry. Since users uploading a
- * polyline almost always intend a filled shape, closing it is the right
- * default.
+ * Convert <polygon> elements to <path> elements, reversing point order if
+ * needed so the path winds CCW in SVG Y-down space (negative signed area).
+ * SVGLoader.createShapes() treats positive-area (CW in Y-down) paths as holes
+ * rather than outer shapes, producing garbage geometry. By guaranteeing CCW
+ * winding here, we ensure every polygon is treated as a solid outer boundary.
+ */
+function convertPolygonsToPath(doc: Document): void {
+  const NS = "http://www.w3.org/2000/svg";
+  for (const el of Array.from(doc.querySelectorAll("polygon"))) {
+    const pointsAttr = el.getAttribute("points") ?? "";
+    const nums = pointsAttr.trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
+    if (nums.length < 6) continue; // need at least 3 points (6 numbers)
+
+    let coords: [number, number][] = [];
+    for (let i = 0; i + 1 < nums.length; i += 2) {
+      coords.push([nums[i], nums[i + 1]]);
+    }
+
+    // Compute signed area in SVG Y-down space.
+    // Negative = CCW in Y-down = outer shape in SVGLoader.
+    // Positive = CW in Y-down = hole in SVGLoader.
+    // Reverse points if positive so SVGLoader treats this as an outer boundary.
+    let area = 0;
+    for (let i = 0; i < coords.length; i++) {
+      const j = (i + 1) % coords.length;
+      area += coords[i][0] * coords[j][1] - coords[j][0] * coords[i][1];
+    }
+    if (area > 0) coords = coords.reverse();
+
+    const d =
+      `M ${coords[0][0]} ${coords[0][1]} ` +
+      coords.slice(1).map(([x, y]) => `L ${x} ${y}`).join(" ") +
+      " Z";
+
+    const path = doc.createElementNS(NS, "path");
+    path.setAttribute("d", d);
+    for (const attr of Array.from(el.attributes)) {
+      if (attr.name !== "points") path.setAttribute(attr.name, attr.value);
+    }
+    el.parentElement?.replaceChild(path, el);
+  }
+}
+
+/**
+ * Convert <polyline> elements to closed <path> elements with winding
+ * correction. <polyline> is an open path that produces no filled geometry
+ * in SVGLoader. Since users uploading a polyline almost always intend a
+ * filled shape, we close it and guarantee CCW winding (same logic as
+ * convertPolygonsToPath).
  */
 function closePolylines(doc: Document): void {
+  const NS = "http://www.w3.org/2000/svg";
   for (const el of Array.from(doc.querySelectorAll("polyline"))) {
-    const NS = "http://www.w3.org/2000/svg";
-    const polygon = doc.createElementNS(NS, "polygon");
-    for (const attr of Array.from(el.attributes)) {
-      polygon.setAttribute(attr.name, attr.value);
+    const pointsAttr = el.getAttribute("points") ?? "";
+    const nums = pointsAttr.trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
+    if (nums.length < 6) continue;
+
+    let coords: [number, number][] = [];
+    for (let i = 0; i + 1 < nums.length; i += 2) {
+      coords.push([nums[i], nums[i + 1]]);
     }
-    el.parentElement?.replaceChild(polygon, el);
+
+    let area = 0;
+    for (let i = 0; i < coords.length; i++) {
+      const j = (i + 1) % coords.length;
+      area += coords[i][0] * coords[j][1] - coords[j][0] * coords[i][1];
+    }
+    if (area > 0) coords = coords.reverse();
+
+    const d =
+      `M ${coords[0][0]} ${coords[0][1]} ` +
+      coords.slice(1).map(([x, y]) => `L ${x} ${y}`).join(" ") +
+      " Z";
+
+    const path = doc.createElementNS(NS, "path");
+    path.setAttribute("d", d);
+    for (const attr of Array.from(el.attributes)) {
+      if (attr.name !== "points") path.setAttribute(attr.name, attr.value);
+    }
+    el.parentElement?.replaceChild(path, el);
   }
 }
 
@@ -217,7 +283,11 @@ function normalizeSvgForParsing(svgContent: string): { svg: string; width: numbe
   // Inline <use>/<symbol> references so SVGLoader sees concrete elements
   inlineUseElements(doc);
 
-  // Close open <polyline> elements into filled <polygon> shapes
+  // Convert <polygon> to winding-corrected <path> so SVGLoader treats them
+  // as outer boundaries, not holes
+  convertPolygonsToPath(doc);
+
+  // Close open <polyline> elements into winding-corrected closed <path> shapes
   closePolylines(doc);
 
   let vbX = 0, vbY = 0, vbW = 100, vbH = 100;

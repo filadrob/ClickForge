@@ -1,0 +1,80 @@
+In artifacts/fidget-toy/src/lib/svgParser.ts, replace the existing convertPolygonsToPath function with this corrected version. The previous version was a no-op — SVGLoader handles <polygon> and <path> identically, so the conversion alone fixed nothing. The real bug is that <polygon> points written in clockwise screen order (top → right → bottom → left, which is how most tools and humans naturally write them) produce a positive signed area in SVG's Y-down coordinate space. SVGLoader interprets positive-area paths as holes, not outer shapes, causing it to build geometry from a hole with no outer boundary — producing the garbage pentagon artifact.
+The fix is to check the winding of each polygon's points and reverse them if needed, so SVGLoader always receives a CCW outer boundary (negative signed area in SVG Y-down space):
+Replace the existing convertPolygonsToPath function with:
+ts/**
+ * Convert <polygon> elements to <path> elements, reversing point order if
+ * needed so the path winds CCW in SVG Y-down space (negative signed area).
+ * SVGLoader.createShapes() treats positive-area (CW in Y-down) paths as holes
+ * rather than outer shapes, producing garbage geometry. By guaranteeing CCW
+ * winding here, we ensure every polygon is treated as a solid outer boundary.
+ */
+function convertPolygonsToPath(doc: Document): void {
+  const NS = "http://www.w3.org/2000/svg";
+  for (const el of Array.from(doc.querySelectorAll("polygon"))) {
+    const pointsAttr = el.getAttribute("points") ?? "";
+    const nums = pointsAttr.trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
+    if (nums.length < 6) continue; // need at least 3 points (6 numbers)
+
+    let coords: [number, number][] = [];
+    for (let i = 0; i + 1 < nums.length; i += 2) {
+      coords.push([nums[i], nums[i + 1]]);
+    }
+
+    // Compute signed area in SVG Y-down space.
+    // Negative = CCW in Y-down = outer shape in SVGLoader.
+    // Positive = CW in Y-down = hole in SVGLoader.
+    // Reverse points if positive so SVGLoader treats this as an outer boundary.
+    let area = 0;
+    for (let i = 0; i < coords.length; i++) {
+      const j = (i + 1) % coords.length;
+      area += coords[i][0] * coords[j][1] - coords[j][0] * coords[i][1];
+    }
+    if (area > 0) coords = coords.reverse();
+
+    const d =
+      `M ${coords[0][0]} ${coords[0][1]} ` +
+      coords.slice(1).map(([x, y]) => `L ${x} ${y}`).join(" ") +
+      " Z";
+
+    const path = doc.createElementNS(NS, "path");
+    path.setAttribute("d", d);
+    for (const attr of Array.from(el.attributes)) {
+      if (attr.name !== "points") path.setAttribute(attr.name, attr.value);
+    }
+    el.parentElement?.replaceChild(path, el);
+  }
+}
+Also update closePolylines the same way — close the polyline into a polygon and apply the same winding correction before converting to a path:
+tsfunction closePolylines(doc: Document): void {
+  const NS = "http://www.w3.org/2000/svg";
+  for (const el of Array.from(doc.querySelectorAll("polyline"))) {
+    const pointsAttr = el.getAttribute("points") ?? "";
+    const nums = pointsAttr.trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
+    if (nums.length < 6) continue;
+
+    let coords: [number, number][] = [];
+    for (let i = 0; i + 1 < nums.length; i += 2) {
+      coords.push([nums[i], nums[i + 1]]);
+    }
+
+    let area = 0;
+    for (let i = 0; i < coords.length; i++) {
+      const j = (i + 1) % coords.length;
+      area += coords[i][0] * coords[j][1] - coords[j][0] * coords[i][1];
+    }
+    if (area > 0) coords = coords.reverse();
+
+    const d =
+      `M ${coords[0][0]} ${coords[0][1]} ` +
+      coords.slice(1).map(([x, y]) => `L ${x} ${y}`).join(" ") +
+      " Z";
+
+    const path = doc.createElementNS(NS, "path");
+    path.setAttribute("d", d);
+    for (const attr of Array.from(el.attributes)) {
+      if (attr.name !== "points") path.setAttribute(attr.name, attr.value);
+    }
+    el.parentElement?.replaceChild(path, el);
+  }
+}
+No other changes needed. The shape.holes = [] fix and the other fixes from the previous prompt can still be applied on top of this — this just corrects the foundational winding issue that was causing the pentagon artifact.
