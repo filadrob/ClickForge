@@ -384,7 +384,9 @@ export function createOuterShellGeometries(
   const floorShape = cloneShape(innerShape);
   const innerFillFloorGeo = extrudeShape(floorShape, floorDepth, "shell/innerFloor", shellStats);
 
-  const ox = settings.pocketOffsetX ?? 0;
+  // Negate X offset when the shell is mirrored: transformToMm has already
+  // flipped the SVG's X axis, so the pocket nudge must follow that flip.
+  const ox = (settings.pocketOffsetX ?? 0) * (mirrorShell ? -1 : 1);
   const oy = settings.pocketOffsetY ?? 0;
 
   // ── 3. MX pin-hole section (deepest part of pocket) ────────────────────
@@ -699,7 +701,8 @@ export function createInnerClickerGeometries(
   // for separate bodies and leave as an artefact between layers.
   const FLOOR_BLEED = 0.01;
 
-  const ox = settings.pocketOffsetX ?? 0;
+  // Negate X offset when the clicker is mirrored: same reasoning as the shell.
+  const ox = (settings.pocketOffsetX ?? 0) * (mirrorClicker ? -1 : 1);
   const oy = settings.pocketOffsetY ?? 0;
 
   // Solid floor — expanded outward by FLOOR_BLEED to close the slicer gap
