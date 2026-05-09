@@ -1466,6 +1466,12 @@ export default function Studio() {
     };
     setSettings(savedSettings);
     setDraftSizeMm(String(savedSettings.targetSizeMm));
+    if ((raw as any).svgIsClickerShape === false || !("svgIsClickerShape" in (raw ?? {}))) {
+      toast({
+        title: "Project loaded in new mode",
+        description: "This project was saved with the old layout. Clicker size now controls the inner piece — you may need to adjust the size slider.",
+      });
+    }
 
     if (p.svgData) {
       try {
@@ -1885,28 +1891,6 @@ export default function Studio() {
                     )}
                   </div>
 
-                  {/* Shape role toggle (advanced only) */}
-                  {sidebarMode === "advanced" && (
-                  <label className="flex items-start gap-2.5 rounded-lg border border-border bg-accent/20 px-3 py-2.5 cursor-pointer hover:bg-accent/40 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={settings.svgIsClickerShape}
-                      onChange={(e) => setSetting("svgIsClickerShape", e.target.checked)}
-                      className="mt-0.5 accent-emerald-500"
-                    />
-                    <div className="flex-1">
-                      <p className="text-xs font-medium text-foreground leading-tight">Use as inner clicker shape</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">
-                        SVG becomes the clicker body — the outer shell is generated around it
-                      </p>
-                    </div>
-                    <ResetButton
-                      isDefault={settings.svgIsClickerShape === DEFAULT_SETTINGS.svgIsClickerShape}
-                      onReset={() => setSetting("svgIsClickerShape", DEFAULT_SETTINGS.svgIsClickerShape)}
-                      defaultLabel={DEFAULT_SETTINGS.svgIsClickerShape ? "on" : "off"}
-                    />
-                  </label>
-                  )}
                 </div>
               ) : (
                 /* ── Empty drop zone ── */
@@ -1977,7 +1961,7 @@ export default function Studio() {
                   </div>
                   <div className="flex-1">
                     <Label className="text-xs text-muted-foreground mb-1 block">
-                      {(settings.svgIsClickerShape ?? false) ? "Clicker size (mm)" : "Size (mm)"}
+                      Clicker size (mm)
                     </Label>
                     <Input
                       type="number"
@@ -2374,16 +2358,10 @@ export default function Studio() {
                   commitOnRelease
                   defaultValue={DEFAULT_SETTINGS.clearanceMm}
                   onReset={() => setSetting("clearanceMm", DEFAULT_SETTINGS.clearanceMm)}
-                  {...hl(
-                    (settings.svgIsClickerShape ?? false)
-                      ? ["shell_outer", "shell_floor", "shell_walls"]
-                      : ["click_floor", "click_walls"]
-                  )}
+                  {...hl(["shell_outer", "shell_floor", "shell_walls"])}
                 />
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  {(settings.svgIsClickerShape ?? false)
-                    ? "SVG is clicker — gap is added to the outer shell so the clicker slides in cleanly."
-                    : "Gap is removed from the clicker body so it slides into the shell pocket."}
+                  Gap added between the clicker body and the shell pocket so the clicker slides in cleanly.
                 </p>
               </div>
             </div>

@@ -1,0 +1,34 @@
+1. src/lib/fidgetGeometry.ts
+Remove svgIsClickerShape from the FidgetSettings interface and from DEFAULT_SETTINGS.
+Remove it from getOuterShellSig, getInnerClickerSig, and getValidateSig.
+In createOuterShellGeometries, delete the if (svgIsClickerShape) { ... } else { ... } branching entirely. Replace with a single code path that always treats the SVG as the clicker body:
+tsconst CLEARANCE = settings.clearanceMm ?? DEFAULT_SETTINGS.clearanceMm;
+
+// SVG = clicker body. Pocket = SVG + clearance. Outer wall = pocket + wall thickness.
+const innerShape = expandShapeOutward(cloneShape(svgShape), CLEARANCE);
+const outerShape =
+  offsetShapeOutward(innerShape, insetAmount) ??
+  expandShapeOutward(cloneShape(innerShape), insetAmount);
+In createInnerClickerGeometries, remove the svgIsClickerShape conditional for clickerShape. It always becomes:
+tsconst clickerShape = cloneShape(svgShape);
+In validateGeometry, remove the if (svgIsClickerShape) branch. Keep only the clicker-first validation chain: SVG must be large enough to hold the switch cavity, outer shell (SVG + clearance + insetAmount) must be large enough to hold the keycap pocket.
+In computeAutoPocketOffset, remove any svgIsClickerShape references — it already operates on shapes[0] directly so it should need no changes.
+2. src/pages/Studio.tsx
+Remove the "Use as inner clicker shape" checkbox and its label from the sidebar entirely.
+Remove all references to settings.svgIsClickerShape and setSetting("svgIsClickerShape", ...).
+Update the size input label from "Size (mm)" to "Clicker size (mm)" unconditionally — it now always refers to the clicker body dimension.
+Update the clearance slider description to always read: "Gap added between the clicker body and the shell pocket so the clicker slides in cleanly."
+Update the insetAmount slider label to always read "Wall thickness".
+In the geometry warning messages in the sidebar, update any text that refers to "model size" or "shell size" to say "clicker size" since that's now what targetSizeMm controls.
+3. Backward compatibility for saved projects
+In the project loader in Studio.tsx (the useEffect that processes loadedProject.data), after building savedSettings, add:
+ts// Legacy projects were saved with SVG = outer shell assumption.
+// Flag them so the user knows dimensions will differ.
+if ((raw as any).svgIsClickerShape === false || !('svgIsClickerShape' in (raw ?? {}))) {
+  toast({
+    title: "Project loaded in new mode",
+    description: "This project was saved with the old layout. Clicker size now controls the inner piece — you may need to adjust the size slider.",
+  });
+}
+4. Clean up
+Remove svgIsClickerShape from the FidgetSettingsBlob type in the API client if it exists there. Remove it from any serialization/deserialization logic.
