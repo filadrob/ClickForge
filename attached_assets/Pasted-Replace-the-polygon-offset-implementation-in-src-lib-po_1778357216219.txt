@@ -1,4 +1,9 @@
-import ClipperLib from "clipper-lib";
+Replace the polygon offset implementation in src/lib/polygonOffset.ts with one backed by clipper-lib.
+Step 1: Add the dependency:
+npm install clipper-lib
+npm install --save-dev @types/clipper-lib
+Step 2: Rewrite polygonOffset.ts to replace the insetPolygon and outsetPolygon function bodies with Clipper-backed implementations. Keep the exact same exported function signatures so nothing else in the codebase needs to change:
+tsimport ClipperLib from "clipper-lib";
 import * as THREE from "three";
 
 const SCALE = 1000; // mm → integer units
@@ -32,7 +37,6 @@ export function outsetPolygon(points: THREE.Vector2[], offsetMm: number): THREE.
   return results.filter(r => r.length >= 3);
 }
 
-/** Signed area (positive = CCW in Y-up / Three.js coordinate space). */
 export function signedArea(pts: THREE.Vector2[]): number {
   let area = 0;
   const n = pts.length;
@@ -42,3 +46,5 @@ export function signedArea(pts: THREE.Vector2[]): number {
   }
   return area / 2;
 }
+Delete everything else in the file — the old computeRawOffset, removeSelfIntersections, findFirstCrossing, segmentIntersection functions are no longer needed.
+Step 3: In fidgetGeometry.ts, the callers of insetPolygon and outsetPolygon currently expect THREE.Vector2[][] (array of contours) and already take the largest one. Verify the call sites still work — they should since the signatures are unchanged.
