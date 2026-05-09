@@ -969,9 +969,78 @@ function expandShapeOutward(shape: THREE.Shape, amountMm: number): THREE.Shape {
   return out;
 }
 
-function computeScale(s: FidgetSettings, w: number, h: number): { scale: number } {
+function computeScale(
+  s: Pick<FidgetSettings, "targetSizeMm" | "lockDimension">,
+  w: number,
+  h: number
+): { scale: number } {
   const base = s.lockDimension === "width" ? w : h;
   return { scale: base > 0 ? s.targetSizeMm / base : 1 };
+}
+
+/**
+ * Compute the auto-centre pocket offset (mm) for a freshly-loaded SVG.
+ *
+ * The pipeline centres shapes on the origin using the *bounding-box* midpoint,
+ * so for symmetric shapes the centroid happens to land at (0, 0) and the
+ * default zero nudge is correct.  For asymmetric shapes the centroid of the
+ * largest filled region is offset from the bounding-box centre, meaning the
+ * pocket ends up visually off-centre without any nudge.
+ *
+ * This function returns the centroid of shapes[0] (the largest filled region)
+ * expressed in world-space mm using the same transform as transformToMm().
+ * Applying the result as pocketOffsetX/Y places the switch pocket at the
+ * shape's true visual centre of mass with zero user nudge.
+ *
+ * Only call this on a fresh SVG upload — saved projects carry their own
+ * serialised offset and must not be overwritten.
+ */
+export function computeAutoPocketOffset(
+  shapes: THREE.Shape[],
+  svgWidth: number,
+  svgHeight: number,
+  settings: Pick<FidgetSettings, "targetSizeMm" | "lockDimension">
+): { x: number; y: number } {
+  if (shapes.length === 0) return { x: 0, y: 0 };
+
+  const { scale } = computeScale(settings, svgWidth, svgHeight);
+
+  const shape = shapes[0];
+  const raw = shape.getPoints(128);
+  if (raw.length < 3) return { x: 0, y: 0 };
+
+  // Strip the closing duplicate point that THREE appends for closed shapes.
+  const first = raw[0];
+  const last  = raw[raw.length - 1];
+  const pts   = last.distanceTo(first) < 1e-10 ? raw.slice(0, -1) : raw;
+  const n     = pts.length;
+  if (n < 3) return { x: 0, y: 0 };
+
+  // Area-weighted centroid via the shoelace formula (SVG pixel space, Y-down).
+  let area = 0;
+  let cx   = 0;
+  let cy   = 0;
+  for (let i = 0; i < n; i++) {
+    const j     = (i + 1) % n;
+    const cross = pts[i].x * pts[j].y - pts[j].x * pts[i].y;
+    area += cross;
+    cx   += (pts[i].x + pts[j].x) * cross;
+    cy   += (pts[i].y + pts[j].y) * cross;
+  }
+  area /= 2;
+  if (Math.abs(area) < 1e-10) return { x: 0, y: 0 };
+  cx /= 6 * area;
+  cy /= 6 * area;
+
+  // Apply the same affine transform as transformToMm() (no mirror):
+  //   worldX =  px * scale - (svgWidth  * scale / 2)
+  //   worldY = -(py * scale - (svgHeight * scale / 2))
+  const bbCx = (svgWidth  * scale) / 2;
+  const bbCy = (svgHeight * scale) / 2;
+  const x    =  cx * scale - bbCx;
+  const y    = -(cy * scale - bbCy);
+
+  return { x, y };
 }
 
 // ---------------------------------------------------------------------------

@@ -56,6 +56,7 @@ import {
   getKeyRingSig,
   getValidateSig,
   DEFAULT_SETTINGS,
+  computeAutoPocketOffset,
   type FidgetSettings,
   type GeometryWarning,
 } from "@/lib/fidgetGeometry";
@@ -1499,7 +1500,24 @@ export default function Studio() {
         // Derive preview colours from the SVG's own fill/stroke palette
         const clickerColor = extractSvgColor(content);
         const shellColor   = deriveShellColor(clickerColor);
-        setSettings((prev) => ({ ...prev, clickerColor, shellColor }));
+        // Auto-centre the pocket on the shape's visual centroid so that
+        // asymmetric SVGs (logos, non-rectangular outlines) start with the
+        // switch pocket already aligned, requiring less manual nudging.
+        setSettings((prev) => {
+          const autoOffset = computeAutoPocketOffset(
+            parsed.shapes,
+            parsed.width,
+            parsed.height,
+            prev,
+          );
+          return {
+            ...prev,
+            clickerColor,
+            shellColor,
+            pocketOffsetX: autoOffset.x,
+            pocketOffsetY: autoOffset.y,
+          };
+        });
 
         toast({
           title: "SVG loaded",
