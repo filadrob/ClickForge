@@ -1977,7 +1977,7 @@ export default function Studio() {
                 </div>
                 <div className="flex gap-2">
                   <div className="flex-1">
-                    <Label className="text-xs text-muted-foreground mb-1 block">Lock to</Label>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Constraint</Label>
                     <select
                       value={settings.lockDimension}
                       onChange={(e) => setSetting("lockDimension", e.target.value as "width" | "height")}
