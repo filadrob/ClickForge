@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useCallback,
   type ReactNode,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
@@ -12,6 +13,10 @@ interface AuthContextValue {
   session: Session | null;
   user: User | null;
   isLoading: boolean;
+  /** True when the current session was created via a password-recovery email link. */
+  needsPasswordReset: boolean;
+  /** Clear the password-reset flag after the user has set a new password. */
+  clearPasswordReset: () => void;
   signOut: () => Promise<void>;
 }
 
@@ -19,12 +24,15 @@ const AuthContext = createContext<AuthContextValue>({
   session: null,
   user: null,
   isLoading: true,
+  needsPasswordReset: false,
+  clearPasswordReset: () => {},
   signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [needsPasswordReset, setNeedsPasswordReset] = useState(false);
 
   useEffect(() => {
     // Get initial session
@@ -33,18 +41,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     });
 
-    // Listen for auth changes
+    // Listen for auth changes — detect PASSWORD_RECOVERY events so the app
+    // can show a "set new password" form instead of auto-redirecting.
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setIsLoading(false);
+
+      if (event === "PASSWORD_RECOVERY") {
+        setNeedsPasswordReset(true);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+  const clearPasswordReset = useCallback(() => {
+    setNeedsPasswordReset(false);
+  }, []);
+
   const signOut = async () => {
+    setNeedsPasswordReset(false);
     await supabase.auth.signOut();
   };
 
@@ -54,6 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         user: session?.user ?? null,
         isLoading,
+        needsPasswordReset,
+        clearPasswordReset,
         signOut,
       }}
     >

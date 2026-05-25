@@ -6,23 +6,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { LogIn, UserPlus, Loader2 } from "lucide-react";
+import { LogIn, UserPlus, Loader2, ArrowLeft, Mail } from "lucide-react";
 
 export default function AuthPage() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, needsPasswordReset } = useAuth();
   const [, setLocation] = useLocation();
 
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Redirect to studio if already signed in
+  // Redirect to studio if already signed in (or to reset-password if recovery)
   useEffect(() => {
     if (!authLoading && user) {
-      setLocation("/studio");
+      if (needsPasswordReset) {
+        setLocation("/reset-password");
+      } else {
+        setLocation("/studio");
+      }
     }
-  }, [user, authLoading, setLocation]);
+  }, [user, authLoading, needsPasswordReset, setLocation]);
 
   if (authLoading) return null;
 
@@ -31,7 +35,7 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
-      if (isLogin) {
+      if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -39,7 +43,7 @@ export default function AuthPage() {
         if (error) throw error;
         toast.success("Welcome back!");
         setLocation("/studio");
-      } else {
+      } else if (mode === "signup") {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -48,7 +52,7 @@ export default function AuthPage() {
         
         if (data.user && data.user.identities && data.user.identities.length === 0) {
           toast.error("This email is already registered. Please sign in.");
-          setIsLogin(true);
+          setMode("login");
         } else if (!data.session) {
           toast.success("Success! Please check your email for a confirmation link.");
         } else {
@@ -56,6 +60,23 @@ export default function AuthPage() {
           setLocation("/studio");
         }
       }
+    } catch (error: any) {
+      toast.error(error.message || "An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("Check your email for a password reset link.");
     } catch (error: any) {
       toast.error(error.message || "An error occurred");
     } finally {
@@ -77,6 +98,71 @@ export default function AuthPage() {
     }
   };
 
+  // ── Forgot password form ──────────────────────────────────────────────
+  if (mode === "forgot") {
+    return (
+      <div
+        className="flex min-h-[100dvh] items-center justify-center px-4"
+        style={{
+          background:
+            "linear-gradient(135deg, hsl(248,90%,97%) 0%, hsl(240,15%,94%) 100%)",
+        }}
+      >
+        <div className="w-full max-w-[440px]">
+          <div className="flex justify-center mb-6">
+            <img src="/logo.svg" alt="ClickForge" className="h-10 w-10" />
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <div className="mb-6 text-center">
+              <h1 className="text-2xl font-bold text-slate-900">
+                Reset your password
+              </h1>
+              <p className="text-slate-500 mt-2 text-sm">
+                Enter your email and we'll send you a link to set a new password.
+              </p>
+            </div>
+
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-email">Email address</Label>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <Button type="submit" className="w-full bg-[#5f5ce6] hover:bg-[#4b48cc]" disabled={loading}>
+                {loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Mail className="mr-2 h-4 w-4" />
+                )}
+                Send reset link
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center text-sm">
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 font-medium text-[#5f5ce6] hover:text-[#4b48cc] hover:underline"
+                onClick={() => setMode("login")}
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back to sign in
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Sign in / Sign up form ────────────────────────────────────────────
   return (
     <div
       className="flex min-h-[100dvh] items-center justify-center px-4"
@@ -95,10 +181,10 @@ export default function AuthPage() {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="mb-6 text-center">
             <h1 className="text-2xl font-bold text-slate-900">
-              {isLogin ? "Welcome back" : "Create an account"}
+              {mode === "login" ? "Welcome back" : "Create an account"}
             </h1>
             <p className="text-slate-500 mt-2 text-sm">
-              {isLogin
+              {mode === "login"
                 ? "Enter your credentials to access your account"
                 : "Sign up to start creating your projects"}
             </p>
@@ -120,6 +206,15 @@ export default function AuthPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
+                {mode === "login" && (
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-[#5f5ce6] hover:text-[#4b48cc] hover:underline"
+                    onClick={() => setMode("forgot")}
+                  >
+                    Forgot password?
+                  </button>
+                )}
               </div>
               <Input
                 id="password"
@@ -135,12 +230,12 @@ export default function AuthPage() {
             <Button type="submit" className="w-full bg-[#5f5ce6] hover:bg-[#4b48cc]" disabled={loading}>
               {loading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : isLogin ? (
+              ) : mode === "login" ? (
                 <LogIn className="mr-2 h-4 w-4" />
               ) : (
                 <UserPlus className="mr-2 h-4 w-4" />
               )}
-              {isLogin ? "Sign in" : "Create account"}
+              {mode === "login" ? "Sign in" : "Create account"}
             </Button>
           </form>
 
@@ -171,14 +266,14 @@ export default function AuthPage() {
 
           <div className="mt-6 text-center text-sm">
             <span className="text-slate-500">
-              {isLogin ? "Don't have an account? " : "Already have an account? "}
+              {mode === "login" ? "Don't have an account? " : "Already have an account? "}
             </span>
             <button
               type="button"
               className="font-medium text-[#5f5ce6] hover:text-[#4b48cc] hover:underline"
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => setMode(mode === "login" ? "signup" : "login")}
             >
-              {isLogin ? "Sign up" : "Sign in"}
+              {mode === "login" ? "Sign up" : "Sign in"}
             </button>
           </div>
         </div>
@@ -186,3 +281,4 @@ export default function AuthPage() {
     </div>
   );
 }
+

@@ -13,6 +13,7 @@ import AuthPage from "@/pages/Auth";
 const Studio = lazy(() => import("@/pages/Studio"));
 const Projects = lazy(() => import("@/pages/Projects"));
 const Library = lazy(() => import("@/pages/Library"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 function HomeRedirect() {
@@ -58,6 +59,7 @@ function AppRoutes() {
           <Route path="/" component={HomeRedirect} />
           <Route path="/sign-in" component={AuthPage} />
           <Route path="/sign-up" component={AuthPage} />
+          <Route path="/reset-password" component={ResetPassword} />
           <Route path="/studio" component={PublicStudio} />
           <Route path="/studio/:id" component={() => <ProtectedRoute component={Studio} />} />
           <Route path="/projects" component={() => <ProtectedRoute component={Projects} />} />
