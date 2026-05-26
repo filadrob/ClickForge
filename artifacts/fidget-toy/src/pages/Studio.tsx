@@ -86,6 +86,11 @@ import {
   LogIn,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import JigPanel from "@/components/studio/JigPanel";
+import JigMesh from "@/components/studio/JigMesh";
+import { computeJigCavity } from "@/lib/jig/cavity";
+import { exportJigSTL } from "@/lib/jig/export";
+import type { JigOutput } from "@/lib/jig/types";
 
 // ─── Colour utilities ─────────────────────────────────────────────────────
 
@@ -148,6 +153,35 @@ function deriveShellColor(clickerHex: string): string {
   const b = parseInt(full.slice(5, 7), 16) / 255;
   const l = (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
   return adjustLightness(clickerHex, l < 0.20 ? 20 : -20);
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * Rebuild the raw SVG with a mm-valued viewBox + scale transform so that
+ * tessellateShape() (which treats 1 SVG unit = 1mm) receives coordinates
+ * already in mm.  This bridges the Studio's pixel-based SVG to the jig
+ * geometry engine without touching the Story 1 cavity.ts code.
+ */
+function buildScaledSvgForJig(
+  rawSvg: string,
+  svgWidthPx: number,
+  svgHeightPx: number,
+  lockDimension: "width" | "height",
+  targetSizeMm: number,
+): string {
+  const scale =
+    lockDimension === "width"
+      ? targetSizeMm / svgWidthPx
+      : targetSizeMm / svgHeightPx;
+  const viewW = (svgWidthPx * scale).toFixed(4);
+  const viewH = (svgHeightPx * scale).toFixed(4);
+  // Strip XML declaration and outer <svg> wrapper, preserve all inner content.
+  const inner = rawSvg
+    .replace(/<\?xml[^>]*\?>\s*/gi, "")
+    .replace(/<svg[^>]*>\s*/i, "")
+    .replace(/\s*<\/svg>\s*$/i, "");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${viewW} ${viewH}"><g transform="scale(${scale})">${inner}</g></svg>`;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -1378,6 +1412,77 @@ export default function Studio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [svgState, settings.lockDimension, settings.targetSizeMm]);
 
+  // ── Jig geometry outputs ─────────────────────────────────────────────────
+  // Computed reactively; null when jig is disabled or SVG is not yet loaded.
+
+  const innerJigOutput = useMemo<JigOutput | null>(() => {
+    if (!svgState || !settings.jigEnabled) return null;
+    if (settings.jigTarget === "outer") return null;
+    try {
+      const scaledSvg = buildScaledSvgForJig(
+        svgState.rawSvg, svgState.width, svgState.height,
+        settings.lockDimension, settings.targetSizeMm,
+      );
+      return computeJigCavity({
+        svgPaths: scaledSvg,
+        pieceType: "inner",
+        clearance: settings.jigClearance,
+        gap: settings.clearanceMm ?? DEFAULT_SETTINGS.clearanceMm,
+        wallThickness: settings.insetAmount,
+        lugRadius: 0,
+        lugCenter: { x: 0, y: 0 },
+        extrudeDepth: settings.clickerTotalDepth ?? DEFAULT_SETTINGS.clickerTotalDepth,
+        jigWidth: settings.jigWidth,
+        jigHeight: settings.jigHeight,
+        rows: settings.jigRows,
+        cols: settings.jigCols,
+        spacing: settings.jigSpacing,
+        zAdjust: settings.jigZAdjust,
+        mirrorX: settings.jigMirrorXInner,
+      });
+    } catch {
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [svgState, settings]);
+
+  const outerJigOutput = useMemo<JigOutput | null>(() => {
+    if (!svgState || !settings.jigEnabled) return null;
+    if (settings.jigTarget === "inner") return null;
+    try {
+      const scaledSvg = buildScaledSvgForJig(
+        svgState.rawSvg, svgState.width, svgState.height,
+        settings.lockDimension, settings.targetSizeMm,
+      );
+      const lugRadius = (settings.keyRingEnabled && (settings.keyRingOnShell ?? true))
+        ? (settings.keyRingOuterDiameter ?? DEFAULT_SETTINGS.keyRingOuterDiameter) / 2
+        : 0;
+      return computeJigCavity({
+        svgPaths: scaledSvg,
+        pieceType: "outer",
+        clearance: settings.jigClearance,
+        gap: settings.clearanceMm ?? DEFAULT_SETTINGS.clearanceMm,
+        wallThickness: settings.insetAmount,
+        lugRadius,
+        lugCenter: {
+          x: settings.keyRingNudgeX ?? DEFAULT_SETTINGS.keyRingNudgeX,
+          y: settings.keyRingNudgeY ?? DEFAULT_SETTINGS.keyRingNudgeY,
+        },
+        extrudeDepth: getShellTotalDepth(settings),
+        jigWidth: settings.jigWidth,
+        jigHeight: settings.jigHeight,
+        rows: settings.jigRows,
+        cols: settings.jigCols,
+        spacing: settings.jigSpacing,
+        zAdjust: settings.jigZAdjust,
+        mirrorX: settings.jigMirrorXOuter,
+      });
+    } catch {
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [svgState, settings]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const outerWallRef = useRef<THREE.Mesh | null>(null);
   const innerFillFloorRef = useRef<THREE.Mesh | null>(null);
@@ -1728,6 +1833,33 @@ export default function Studio() {
           : "OBJ exported",
       });
     });
+  };
+
+  const jigFits = useMemo(() => {
+    if (!settings.jigEnabled) return false;
+    if (settings.jigTarget === "inner") return innerJigOutput?.fits ?? false;
+    if (settings.jigTarget === "outer") return outerJigOutput?.fits ?? false;
+    return (innerJigOutput?.fits ?? false) && (outerJigOutput?.fits ?? false);
+  }, [settings.jigEnabled, settings.jigTarget, innerJigOutput, outerJigOutput]);
+
+  const handleExportJigSTL = () => {
+    if (!svgState) {
+      toast({ title: "Upload an SVG first", variant: "destructive" });
+      return;
+    }
+    const name = projectName;
+    const { jigTarget, jigWidth, jigHeight, jigRows, jigCols, jigMirrorXInner, jigMirrorXOuter } = settings;
+    if (jigTarget === "inner" || jigTarget === "both") {
+      if (innerJigOutput?.fits) {
+        exportJigSTL(innerJigOutput, jigWidth, jigHeight, jigRows, jigCols, jigMirrorXInner, `${name}-jig-inner.stl`);
+      }
+    }
+    if (jigTarget === "outer" || jigTarget === "both") {
+      if (outerJigOutput?.fits) {
+        exportJigSTL(outerJigOutput, jigWidth, jigHeight, jigRows, jigCols, jigMirrorXOuter, `${name}-jig-outer.stl`);
+      }
+    }
+    toast({ title: "Jig STL exported" });
   };
 
   const performSave = useCallback(async () => {
@@ -2107,6 +2239,18 @@ export default function Studio() {
                 <Download className="h-4 w-4 mr-2" />
                 {isPremium ? "Export OBJ" : <PremiumLabel>Export OBJ</PremiumLabel>}
               </Button>
+              {settings.jigEnabled && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleExportJigSTL}
+                  disabled={!svgState || !jigFits}
+                  title={!jigFits ? "Jig doesn't fit — adjust dimensions" : undefined}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Jig STL
+                </Button>
+              )}
             </div>
             )}
 
@@ -2489,6 +2633,17 @@ export default function Studio() {
                 </p>
               </div>
             </div>
+            )}
+
+            {/* ── UV Print Jig ── */}
+            {sidebarMode === "advanced" && (
+            <JigPanel
+              settings={settings}
+              setSetting={setSetting}
+              extrudeDepth={getShellTotalDepth(settings)}
+              innerJigOutput={innerJigOutput}
+              outerJigOutput={outerJigOutput}
+            />
             )}
 
             {/* ── Advanced disclosure ── */}
@@ -2903,6 +3058,18 @@ export default function Studio() {
                 <Download className="h-4 w-4 mr-2" />
                 {isPremium ? "Export OBJ" : <PremiumLabel>Export OBJ</PremiumLabel>}
               </Button>
+              {settings.jigEnabled && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleExportJigSTL}
+                  disabled={!svgState || !jigFits}
+                  title={!jigFits ? "Jig doesn't fit — adjust dimensions" : undefined}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Jig STL
+                </Button>
+              )}
             </div>
             )}
 
@@ -3074,6 +3241,36 @@ export default function Studio() {
                       activeHighlights={sliderHighlight}
                       viewMode={viewMode}
                     />
+
+                    {/* ── Jig meshes — placed below their respective parts in local Y ── */}
+                    {settings.jigEnabled && innerJigOutput && (
+                      <JigMesh
+                        jigOutput={innerJigOutput}
+                        jigWidth={settings.jigWidth}
+                        jigHeight={settings.jigHeight}
+                        rows={settings.jigRows}
+                        cols={settings.jigCols}
+                        mirrorX={settings.jigMirrorXInner}
+                        color={settings.clickerColor ?? DEFAULT_SETTINGS.clickerColor}
+                        positionX={sceneMetrics.separationX}
+                        positionY={-(sceneMetrics.modelH / 2 + settings.jigHeight / 2 + 10)}
+                        shellDepth={getShellTotalDepth(settings)}
+                      />
+                    )}
+                    {settings.jigEnabled && outerJigOutput && (
+                      <JigMesh
+                        jigOutput={outerJigOutput}
+                        jigWidth={settings.jigWidth}
+                        jigHeight={settings.jigHeight}
+                        rows={settings.jigRows}
+                        cols={settings.jigCols}
+                        mirrorX={settings.jigMirrorXOuter}
+                        color={settings.shellColor ?? DEFAULT_SETTINGS.shellColor}
+                        positionX={-sceneMetrics.separationX}
+                        positionY={-(sceneMetrics.modelH / 2 + settings.jigHeight / 2 + 10)}
+                        shellDepth={getShellTotalDepth(settings)}
+                      />
+                    )}
                   </>
                 ) : (
                   <PlaceholderMeshes />

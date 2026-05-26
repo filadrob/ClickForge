@@ -48,3 +48,6 @@ Thumbs.db
 
 # Supabase
 supabase/.temp/
+
+# Local feature planning files
+/.local/

@@ -80,6 +80,18 @@ export interface FidgetSettings {
   keyRingOnClicker: boolean;
   // When false, the key-ring lug is suppressed on the outer shell.
   keyRingOnShell: boolean;
+  // UV Print Jig
+  jigEnabled: boolean;
+  jigTarget: 'inner' | 'outer' | 'both';
+  jigMirrorXInner: boolean;
+  jigMirrorXOuter: boolean;
+  jigClearance: number;   // mm, default 0.15
+  jigWidth: number;       // mm, default 90
+  jigHeight: number;      // mm, default 90
+  jigZAdjust: number;     // mm, default 0, range -2 to +2
+  jigRows: number;        // default 1
+  jigCols: number;        // default 1
+  jigSpacing: number;     // mm, default 2
 }
 
 export const DEFAULT_SETTINGS: FidgetSettings = {
@@ -126,6 +138,17 @@ export const DEFAULT_SETTINGS: FidgetSettings = {
   keyRingPosition: "top",
   keyRingOnClicker: false,
   keyRingOnShell: true,
+  jigEnabled: false,
+  jigTarget: 'inner',
+  jigMirrorXInner: false,
+  jigMirrorXOuter: false,
+  jigClearance: 0.15,
+  jigWidth: 90,
+  jigHeight: 90,
+  jigZAdjust: 0,
+  jigRows: 1,
+  jigCols: 1,
+  jigSpacing: 2,
 };
 
 /**

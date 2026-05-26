@@ -15,6 +15,10 @@ const Projects = lazy(() => import("@/pages/Projects"));
 const Library = lazy(() => import("@/pages/Library"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const NotFound = lazy(() => import("@/pages/not-found"));
+// Dev-only jig geometry test page — never included in production bundle
+const JigTestPage = import.meta.env.DEV
+  ? lazy(() => import("@/pages/jig-test"))
+  : null;
 
 function HomeRedirect() {
   const { user, isLoading } = useAuth();
@@ -64,6 +68,10 @@ function AppRoutes() {
           <Route path="/studio/:id" component={() => <ProtectedRoute component={Studio} />} />
           <Route path="/projects" component={() => <ProtectedRoute component={Projects} />} />
           <Route path="/library" component={() => <ProtectedRoute component={Library} />} />
+          {/* Dev-only jig geometry verification page */}
+          {import.meta.env.DEV && JigTestPage && (
+            <Route path="/jig-test" component={JigTestPage} />
+          )}
           <Route component={NotFound} />
         </Switch>
       </Suspense>
