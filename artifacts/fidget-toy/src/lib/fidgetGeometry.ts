@@ -188,6 +188,7 @@ export const PRODUCT_DEFAULTS: Record<ProductType, Partial<FidgetSettings>> = {
     keyRingEnabled: true,
     keyRingOnShell: false,
     keyRingOnClicker: true,
+    keyRingNudgeZ: 0,
   },
 };
 

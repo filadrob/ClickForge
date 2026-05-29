@@ -113,9 +113,9 @@ function adjustLightness(hex: string, deltaPercent: number): string {
   if (max !== min) {
     const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    if (max === r)      h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
     else if (max === g) h = ((b - r) / d + 2) / 6;
-    else                h = ((r - g) / d + 4) / 6;
+    else h = ((r - g) / d + 4) / 6;
   }
 
   const newL = Math.max(0, Math.min(1, l + deltaPercent / 100));
@@ -324,7 +324,7 @@ function OuterShellGroupInner({
   // React's Object.is dep check so this is effectively memoised — picking a
   // new colour, toggling the key ring, or moving the colour-layer slider all
   // skip the (very expensive) ExtrudeGeometry rebuild here.
-  const shellSig   = getOuterShellSig(settings);
+  const shellSig = getOuterShellSig(settings);
   const keyRingSig = getKeyRingSig(settings);
   const geos = useMemo(
     () => createOuterShellGeometries(shapes, settings, svgWidth, svgHeight),
@@ -571,7 +571,7 @@ function InnerClickerGroupInner({
   const { clickerTotalDepth, clickerFloorDepth, bossFloorGap, bossHeight, bossBaseHeight, pinSectionDepth, magnetSectionDepth } = geos;
   const shellDepth = getShellTotalDepth(settings);
   const shellHousingDepth = (settings.shellSolidFloor ?? DEFAULT_SETTINGS.shellSolidFloor)
-                          + (settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing);
+    + (settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing);
 
   // In normal mode the clicker floats beside the shell.
   // In fit-check mode it is positioned to sit exactly inside the recess.
@@ -605,18 +605,18 @@ function InnerClickerGroupInner({
   const groupPos = fitCheck ? fitCheckGroupPos : normalGroupPos;
 
   // Local z origins (geo starts at 0, mesh centred at -clickerTotalDepth/2)
-  const baseZ      = -clickerTotalDepth / 2;
-  const floorZ     = baseZ;                                   // clicker solid floor
+  const baseZ = -clickerTotalDepth / 2;
+  const floorZ = baseZ;                                   // clicker solid floor
   // In swap mode, an optional pin-hole section sits between the floor and the
   // square cavity walls (mirrors the shell's default-mode layering).
-  const pinSectionZ  = baseZ + clickerFloorDepth;
-  const wallsZ       = pinSectionZ + pinSectionDepth;           // clicker wall section
-  const magnetZ      = wallsZ + (clickerTotalDepth - clickerFloorDepth - pinSectionDepth - magnetSectionDepth); // sits at the top
+  const pinSectionZ = baseZ + clickerFloorDepth;
+  const wallsZ = pinSectionZ + pinSectionDepth;           // clicker wall section
+  const magnetZ = wallsZ + (clickerTotalDepth - clickerFloorDepth - pinSectionDepth - magnetSectionDepth); // sits at the top
 
   // Boss sits bossFloorGap mm above the absolute clicker bottom.
   // The two boss pieces are stacked: solid base then main shell (with cross pocket).
-  const bossBaseZ  = baseZ + bossFloorGap;                    // solid base starts here
-  const bossMainZ  = bossBaseZ + bossBaseHeight;              // main shell starts here
+  const bossBaseZ = baseZ + bossFloorGap;                    // solid base starts here
+  const bossMainZ = bossBaseZ + bossBaseHeight;              // main shell starts here
 
   // Clicker geometry is already centred at local z=0 (spans –depth/2 → +depth/2),
   // so a 180° rotation around X keeps it centred without any extra translation.
@@ -748,11 +748,11 @@ const InnerClickerGroup = memo(
     // outside the geometry sig, so include those too.
     (prev.settings.flipClicker ?? false) === (next.settings.flipClicker ?? false) &&
     (prev.settings.shellSolidFloor ?? DEFAULT_SETTINGS.shellSolidFloor) ===
-      (next.settings.shellSolidFloor ?? DEFAULT_SETTINGS.shellSolidFloor) &&
+    (next.settings.shellSolidFloor ?? DEFAULT_SETTINGS.shellSolidFloor) &&
     (prev.settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing) ===
-      (next.settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing) &&
+    (next.settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing) &&
     (prev.settings.shellWallExtension ?? DEFAULT_SETTINGS.shellWallExtension) ===
-      (next.settings.shellWallExtension ?? DEFAULT_SETTINGS.shellWallExtension),
+    (next.settings.shellWallExtension ?? DEFAULT_SETTINGS.shellWallExtension),
 );
 
 // ─── Edge wireframe overlay — EdgesGeometry lines, Blender-style ─────────
@@ -794,14 +794,14 @@ function LabelProjector({
       v.project(camera);
       return ((v.x + 1) / 2) * 100;
     };
-    const shellPct   = projectXPct(-separationX);
+    const shellPct = projectXPct(-separationX);
     const clickerPct = projectXPct(separationX);
     if (shellLabelRef.current) {
-      shellLabelRef.current.style.left      = `${shellPct}%`;
+      shellLabelRef.current.style.left = `${shellPct}%`;
       shellLabelRef.current.style.transform = "translateX(-50%)";
     }
     if (clickerLabelRef.current) {
-      clickerLabelRef.current.style.left      = `${clickerPct}%`;
+      clickerLabelRef.current.style.left = `${clickerPct}%`;
       clickerLabelRef.current.style.transform = "translateX(-50%)";
     }
   });
@@ -896,13 +896,13 @@ const VC_FACES: {
   bg: string;
   dir: string;
 }[] = [
-  { label: "TOP",   cssTransform: `rotateX(-90deg) translateZ(${VC_HALF}px)`,  bg: "rgba(160,155,255,0.93)", dir: "0,1,0" },
-  { label: "BTM",   cssTransform: `rotateX(90deg) translateZ(${VC_HALF}px)`,   bg: "rgba(85,80,175,0.82)",   dir: "0,-1,0" },
-  { label: "FRONT", cssTransform: `translateZ(${VC_HALF}px)`,                   bg: "rgba(135,130,245,0.90)", dir: "0,0,1" },
-  { label: "BACK",  cssTransform: `rotateY(180deg) translateZ(${VC_HALF}px)`,  bg: "rgba(85,80,175,0.78)",   dir: "0,0,-1" },
-  { label: "RIGHT", cssTransform: `rotateY(90deg) translateZ(${VC_HALF}px)`,   bg: "rgba(115,110,225,0.85)", dir: "1,0,0" },
-  { label: "LEFT",  cssTransform: `rotateY(-90deg) translateZ(${VC_HALF}px)`,  bg: "rgba(115,110,225,0.85)", dir: "-1,0,0" },
-];
+    { label: "TOP", cssTransform: `rotateX(90deg) translateZ(${VC_HALF}px)`, bg: "rgba(160,155,255,0.93)", dir: "0,1,0" },
+    { label: "BTM", cssTransform: `rotateX(-90deg) translateZ(${VC_HALF}px)`, bg: "rgba(85,80,175,0.82)", dir: "0,-1,0" },
+    { label: "FRONT", cssTransform: `translateZ(${VC_HALF}px)`, bg: "rgba(135,130,245,0.90)", dir: "0,0,1" },
+    { label: "BACK", cssTransform: `rotateY(180deg) translateZ(${VC_HALF}px)`, bg: "rgba(85,80,175,0.78)", dir: "0,0,-1" },
+    { label: "RIGHT", cssTransform: `rotateY(90deg) translateZ(${VC_HALF}px)`, bg: "rgba(115,110,225,0.85)", dir: "1,0,0" },
+    { label: "LEFT", cssTransform: `rotateY(-90deg) translateZ(${VC_HALF}px)`, bg: "rgba(115,110,225,0.85)", dir: "-1,0,0" },
+  ];
 
 /** CSS 3D ViewCube — syncs rotation with main camera; click to snap, drag to orbit. */
 function ViewCube({
@@ -915,7 +915,7 @@ function ViewCube({
   dragRef: React.MutableRefObject<{ dx: number; dy: number } | null>;
 }) {
   const innerRef = useRef<HTMLDivElement>(null);
-  const rafRef   = useRef<number>(0);
+  const rafRef = useRef<number>(0);
   // Store dir at pointerdown (before setPointerCapture changes e.target in subsequent events)
   const dragState = useRef<{ x: number; y: number; moved: boolean; dir: string | null } | null>(null);
   const [hoveredFace, setHoveredFace] = useState<string | null>(null);
@@ -956,7 +956,7 @@ function ViewCube({
     const dx = (e.clientX - dragState.current.x) * 0.009;
     const dy = (e.clientY - dragState.current.y) * 0.009;
     if (Math.abs(e.clientX - dragState.current.x) > 3 ||
-        Math.abs(e.clientY - dragState.current.y) > 3) {
+      Math.abs(e.clientY - dragState.current.y) > 3) {
       dragState.current.moved = true;
     }
     dragRef.current = { dx, dy };
@@ -1031,27 +1031,27 @@ type MeshKey =
 
 /** Maps each FidgetSettings slider key to the mesh(es) it most directly affects. */
 const SLIDER_HIGHLIGHTS: Partial<Record<keyof FidgetSettings, MeshKey[]>> = {
-  shellSolidFloor:    ["shell_floor"],
+  shellSolidFloor: ["shell_floor"],
   shellSwitchHousing: ["shell_walls", "shell_pin"],
   shellWallExtension: ["shell_extension"],
-  keycapPocketDepth:  ["shell_walls"],
-  insetAmount:        ["shell_outer", "shell_floor", "shell_walls"],
-  pinHoleDepth:       ["shell_pin"],
-  pinHoleRadius:      ["shell_pin"],
-  keycapSize:         ["shell_walls"],
-  clickerSquareSize:  ["click_walls"],
+  keycapPocketDepth: ["shell_walls"],
+  insetAmount: ["shell_outer", "shell_floor", "shell_walls"],
+  pinHoleDepth: ["shell_pin"],
+  pinHoleRadius: ["shell_pin"],
+  keycapSize: ["shell_walls"],
+  clickerSquareSize: ["click_walls"],
   clickerSquareDepth: ["click_walls"],
-  pocketOffsetX:      ["shell_walls", "click_boss", "click_walls"],
-  pocketOffsetY:      ["shell_walls", "click_boss", "click_walls"],
-  clickerTotalDepth:  ["click_floor", "click_walls"],
-  clickerFloorDepth:  ["click_floor"],
-  bossDiameter:       ["click_boss"],
-  bossHeight:         ["click_boss"],
-  bossFloorGap:       ["click_boss"],
-  crossSize:          ["click_boss"],
-  crossDepth:         ["click_boss"],
-  crossArmWidth:      ["click_boss"],
-  targetSizeMm:       ["shell_outer", "shell_floor", "shell_walls", "click_floor", "click_walls", "click_boss"],
+  pocketOffsetX: ["shell_walls", "click_boss", "click_walls"],
+  pocketOffsetY: ["shell_walls", "click_boss", "click_walls"],
+  clickerTotalDepth: ["click_floor", "click_walls"],
+  clickerFloorDepth: ["click_floor"],
+  bossDiameter: ["click_boss"],
+  bossHeight: ["click_boss"],
+  bossFloorGap: ["click_boss"],
+  crossSize: ["click_boss"],
+  crossDepth: ["click_boss"],
+  crossArmWidth: ["click_boss"],
+  targetSizeMm: ["shell_outer", "shell_floor", "shell_walls", "click_floor", "click_walls", "click_boss"],
 };
 
 /**
@@ -1068,9 +1068,9 @@ function MeshHighlightOverlay({
   position: [number, number, number];
   highlighted: boolean;
 }) {
-  const matRef  = useRef<THREE.MeshBasicMaterial>(null);
-  const opRef   = useRef(0);
-  const hlRef   = useRef(highlighted);
+  const matRef = useRef<THREE.MeshBasicMaterial>(null);
+  const opRef = useRef(0);
+  const hlRef = useRef(highlighted);
   useEffect(() => { hlRef.current = highlighted; }, [highlighted]);
 
   useFrame((_, delta) => {
@@ -1120,32 +1120,32 @@ function ModelDimensionAnnotation({
   lineY: number;
 }) {
   const OFFSET = 9;
-  const TICK   = 2.5;
-  const hw = widthMm  / 2;
+  const TICK = 2.5;
+  const hw = widthMm / 2;
   const hh = heightMm / 2;
 
   // Width line – spans X from left to right edge, placed in front of model
-  const wz  = hh + OFFSET;
+  const wz = hh + OFFSET;
   const wx1 = centerX - hw;
   const wx2 = centerX + hw;
 
   // Height line – spans Z from top to bottom, placed left of model
-  const hx  = centerX - hw - OFFSET;
+  const hx = centerX - hw - OFFSET;
 
   const labelStyle: React.CSSProperties = {
-    color:        "#ffffff",
-    background:   "rgba(10,10,18,0.92)",
-    border:       `1.5px solid ${color}`,
+    color: "#ffffff",
+    background: "rgba(10,10,18,0.92)",
+    border: `1.5px solid ${color}`,
     borderRadius: 5,
-    padding:      "3px 10px",
-    fontSize:     13,
-    fontWeight:   700,
-    fontFamily:   "ui-monospace, 'Cascadia Code', monospace",
-    whiteSpace:   "nowrap",
-    pointerEvents:"none",
-    lineHeight:   "1.4",
+    padding: "3px 10px",
+    fontSize: 13,
+    fontWeight: 700,
+    fontFamily: "ui-monospace, 'Cascadia Code', monospace",
+    whiteSpace: "nowrap",
+    pointerEvents: "none",
+    lineHeight: "1.4",
     letterSpacing: "0.02em",
-    boxShadow:    `0 2px 8px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)`,
+    boxShadow: `0 2px 8px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)`,
   };
 
   // Tiny vertical offset so lines don't z-fight with the grid (grid sits at lineY)
@@ -1218,20 +1218,20 @@ function AutoCamera({
   const { camera, controls } = useThree();
 
   useEffect(() => {
-    const svgBase   = lockDimension === "width" ? svgWidth : svgHeight;
-    const scale     = svgBase > 0 ? targetSizeMm / svgBase : 1;
-    const modelHalfW = (svgWidth  * scale) / 2;
+    const svgBase = lockDimension === "width" ? svgWidth : svgHeight;
+    const scale = svgBase > 0 ? targetSizeMm / svgBase : 1;
+    const modelHalfW = (svgWidth * scale) / 2;
     const modelHalfH = (svgHeight * scale) / 2;
 
     // Both parts sit side-by-side; scene half-width ≈ separation + modelHalfW.
     const separationX = Math.max(35, modelHalfW + 12);
-    const sceneHalfW  = separationX + modelHalfW;
+    const sceneHalfW = separationX + modelHalfW;
 
     // Bounding sphere radius with 20 % padding.
     const sceneRadius = Math.max(sceneHalfW, modelHalfH, shellDepth / 2) * 1.2;
 
     // FOV is 40°; half-angle = 20°.  Distance needed to fit the scene.
-    const fovRad   = (40 * Math.PI) / 180;
+    const fovRad = (40 * Math.PI) / 180;
     const distance = sceneRadius / Math.tan(fovRad / 2);
 
     // More overhead angle to view the flat-lying models like a print-bed preview.
@@ -1250,9 +1250,9 @@ function AutoCamera({
       (controls as unknown as { target: THREE.Vector3; update: () => void }).target.set(0, 0, 0);
       (controls as unknown as { target: THREE.Vector3; update: () => void }).update();
     }
-  // controls must be in deps so the effect re-runs once OrbitControls mounts.
-  // recenterKey is incremented by the Re-center button to trigger on demand.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // controls must be in deps so the effect re-runs once OrbitControls mounts.
+    // recenterKey is incremented by the Re-center button to trigger on demand.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetSizeMm, svgWidth, svgHeight, lockDimension, shellDepth, controls, recenterKey]);
 
   return null;
@@ -1350,11 +1350,11 @@ export default function Studio() {
     },
     [isGuest],
   );
-  const shellLabelRef   = useRef<HTMLDivElement>(null);
+  const shellLabelRef = useRef<HTMLDivElement>(null);
   const clickerLabelRef = useRef<HTMLDivElement>(null);
   const [sliderHighlight, setSliderHighlight] = useState<MeshKey[]>([]);
   const hl = (keys: MeshKey[]) => ({
-    onHighlightIn:  () => setSliderHighlight(keys),
+    onHighlightIn: () => setSliderHighlight(keys),
     onHighlightOut: () => setSliderHighlight([]),
   });
   const [shellBounds, setShellBounds] = useState({ w: 0, h: 0 });
@@ -1364,8 +1364,8 @@ export default function Studio() {
     quaternion: new THREE.Quaternion(),
     dist: 130,
   });
-  const vcSnapRef  = useRef<SnapTarget | null>(null);
-  const vcDragRef  = useRef<{ dx: number; dy: number } | null>(null);
+  const vcSnapRef = useRef<SnapTarget | null>(null);
+  const vcDragRef = useRef<{ dx: number; dy: number } | null>(null);
   const [clickerBounds, setClickerBounds] = useState({ w: 0, h: 0 });
   // Draft value for the size input — lets the user finish typing before
   // the 3D scene recalculates.  Committed on blur or Enter.
@@ -1381,7 +1381,7 @@ export default function Studio() {
   // and validation each only depend on a tight subset of fields, so this
   // keeps cosmetic edits and unrelated slider drags from retriggering them.
   const colorLayerSig = useMemo(() => getColorLayerSig(settings), [settings]);
-  const validateSig   = useMemo(() => getValidateSig(settings),   [settings]);
+  const validateSig = useMemo(() => getValidateSig(settings), [settings]);
 
   // Extruded slab geometry for each color region — recomputed only when the
   // SVG, the colour regions, or a colour-layer-affecting setting changes.
@@ -1408,11 +1408,13 @@ export default function Studio() {
     if (!svgState) {
       // Placeholder box depth is 22 mm; after -90° scene rotation its back face
       // is at world Y = -(22/2) = -11. Put the grid just there.
-      return { gridY: -11, gridSize: 300, cellSize: 5, sectionSize: 25, fadeDistance: 200,
-               modelW: 0, modelH: 0, separationX: 35 };
+      return {
+        gridY: -11, gridSize: 300, cellSize: 5, sectionSize: 25, fadeDistance: 200,
+        modelW: 0, modelH: 0, separationX: 35
+      };
     }
     const svgBase = settings.lockDimension === "width" ? svgState.width : svgState.height;
-    const scale   = svgBase > 0 ? settings.targetSizeMm / svgBase : 1;
+    const scale = svgBase > 0 ? settings.targetSizeMm / svgBase : 1;
     // Models now lie flat (extruded along world Y after scene rotation).
     // The back face sits at world Y = -shellDepth/2, which is the print-bed floor.
     const gridY = -(getShellTotalDepth(settings) / 2);
@@ -1420,18 +1422,18 @@ export default function Studio() {
     // Scale grid cell/section density so lines aren't too dense for huge models
     // or too sparse for tiny ones.  Target ~10 cells across the model.
     const targetSize = settings.targetSizeMm;
-    const rawCell    = targetSize / 10;
+    const rawCell = targetSize / 10;
     // Snap cell size to a "nice" value: 1, 2, 5, 10, 20, 50, 100 …
-    const niceSteps  = [0.5, 1, 2, 5, 10, 20, 50, 100, 200];
-    const cellSize   = niceSteps.find(s => s >= rawCell) ?? 200;
+    const niceSteps = [0.5, 1, 2, 5, 10, 20, 50, 100, 200];
+    const cellSize = niceSteps.find(s => s >= rawCell) ?? 200;
     const sectionSize = cellSize * 5;
-    const gridSize    = Math.max(300, targetSize * 8);
+    const gridSize = Math.max(300, targetSize * 8);
     const fadeDistance = Math.max(200, targetSize * 5);
 
-    const modelHalfW  = (svgState.width  * scale) / 2;
+    const modelHalfW = (svgState.width * scale) / 2;
     const separationX = Math.max(35, modelHalfW + 12);
-    const modelW      = svgState.width  * scale;
-    const modelH      = svgState.height * scale;
+    const modelW = svgState.width * scale;
+    const modelH = svgState.height * scale;
 
     return { gridY, gridSize, cellSize, sectionSize, fadeDistance, modelW, modelH, separationX };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1611,12 +1613,12 @@ export default function Studio() {
       !("shellSolidFloor" in raw) && !("shellSwitchHousing" in raw) && !("shellWallExtension" in raw)
     ) {
       const legacyTotal = (raw as { totalDepth: number }).totalDepth;
-      const legacyFill  = (raw as { innerFillDepth: number }).innerFillDepth;
+      const legacyFill = (raw as { innerFillDepth: number }).innerFillDepth;
       const kpd = (raw.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth);
-      const housing   = Math.max(3, Math.min(kpd, legacyFill));
-      const floor     = Math.max(0.5, legacyFill - housing);
+      const housing = Math.max(3, Math.min(kpd, legacyFill));
+      const floor = Math.max(0.5, legacyFill - housing);
       const extension = Math.max(0, legacyTotal - legacyFill);
-      migratedRaw.shellSolidFloor    = floor;
+      migratedRaw.shellSolidFloor = floor;
       migratedRaw.shellSwitchHousing = housing;
       migratedRaw.shellWallExtension = extension;
     }
@@ -1666,7 +1668,7 @@ export default function Studio() {
 
         // Derive preview colours from the SVG's own fill/stroke palette
         const clickerColor = extractSvgColor(content);
-        const shellColor   = deriveShellColor(clickerColor);
+        const shellColor = deriveShellColor(clickerColor);
         // Auto-centre the pocket on the shape's visual centroid so that
         // asymmetric SVGs (logos, non-rectangular outlines) start with the
         // switch pocket already aligned, requiring less manual nudging.
@@ -2011,22 +2013,20 @@ export default function Studio() {
               <button
                 type="button"
                 onClick={() => setSidebarMode("simple")}
-                className={`flex-1 rounded px-2 py-1 transition-colors ${
-                  sidebarMode === "simple"
+                className={`flex-1 rounded px-2 py-1 transition-colors ${sidebarMode === "simple"
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
-                }`}
+                  }`}
               >
                 Simple
               </button>
               <button
                 type="button"
                 onClick={() => setSidebarMode("advanced")}
-                className={`flex-1 rounded px-2 py-1 transition-colors ${
-                  sidebarMode === "advanced"
+                className={`flex-1 rounded px-2 py-1 transition-colors ${sidebarMode === "advanced"
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
-                }`}
+                  }`}
               >
                 Advanced
               </button>
@@ -2042,7 +2042,7 @@ export default function Studio() {
                 onChange={(e) => {
                   const newProduct = e.target.value as ProductType;
                   const defaults = PRODUCT_DEFAULTS[newProduct] || DEFAULT_SETTINGS;
-                  
+
                   if (newProduct === "standee" || newProduct === "magnet" || newProduct === "keychain") {
                     setShowOuterShell(false);
                   } else if (settings.product === "standee" || settings.product === "magnet" || settings.product === "keychain") {
@@ -2119,11 +2119,10 @@ export default function Studio() {
                 /* ── Empty drop zone ── */
                 <div className="space-y-2">
                   <div
-                    className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors ${
-                      isDragging
+                    className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors ${isDragging
                         ? "border-primary bg-accent"
                         : "border-border hover:border-primary hover:bg-accent/50"
-                    }`}
+                      }`}
                     onClick={() => fileInputRef.current?.click()}
                     onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                     onDragLeave={() => setIsDragging(false)}
@@ -2215,11 +2214,10 @@ export default function Studio() {
                 {geoWarnings.map((w, i) => (
                   <div
                     key={i}
-                    className={`flex gap-2 rounded-lg px-3 py-2.5 text-xs leading-snug border ${
-                      w.severity === "error"
+                    className={`flex gap-2 rounded-lg px-3 py-2.5 text-xs leading-snug border ${w.severity === "error"
                         ? "bg-red-950/60 border-red-800/50 text-red-200"
                         : "bg-amber-950/60 border-amber-800/50 text-amber-200"
-                    }`}
+                      }`}
                   >
                     <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                     <span>{w.message}</span>
@@ -2257,931 +2255,940 @@ export default function Studio() {
 
             {/* Save + Export — shown in both Simple and Advanced mode */}
             {sidebarMode === "simple" && (
-            <div className="space-y-2">
-              <Button
-                className="w-full"
-                onClick={handleSave}
-                disabled={isSaving || !svgState}
-              >
-                {isGuest ? <LogIn className="h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                {isSaving
-                  ? "Saving…"
-                  : isGuest
-                    ? "Sign in to save"
-                    : projectId ? "Update Project" : "Save Project"}
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleExportSTL}
-                disabled={!svgState}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export STL
-                {isGuest && (
-                  <span className="ml-2 text-[10px] text-muted-foreground">
-                    ({Math.max(0, 1 - getAnonStlExportCount())} free)
-                  </span>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleExport3MF}
-                disabled={!svgState}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {isPremium ? "Export 3MF" : <PremiumLabel>Export 3MF</PremiumLabel>}
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleExportOBJ}
-                disabled={!svgState}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {isPremium ? "Export OBJ" : <PremiumLabel>Export OBJ</PremiumLabel>}
-              </Button>
-              {settings.jigEnabled && (
+              <div className="space-y-2">
+                <Button
+                  className="w-full"
+                  onClick={handleSave}
+                  disabled={isSaving || !svgState}
+                >
+                  {isGuest ? <LogIn className="h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                  {isSaving
+                    ? "Saving…"
+                    : isGuest
+                      ? "Sign in to save"
+                      : projectId ? "Update Project" : "Save Project"}
+                </Button>
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={handleExportJigSTL}
-                  disabled={!svgState || !jigFits}
-                  title={!jigFits ? "Jig doesn't fit — adjust dimensions" : undefined}
+                  onClick={handleExportSTL}
+                  disabled={!svgState}
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Export Jig STL
+                  Export STL
+                  {isGuest && (
+                    <span className="ml-2 text-[10px] text-muted-foreground">
+                      ({Math.max(0, 1 - getAnonStlExportCount())} free)
+                    </span>
+                  )}
                 </Button>
-              )}
-            </div>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleExport3MF}
+                  disabled={!svgState}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {isPremium ? "Export 3MF" : <PremiumLabel>Export 3MF</PremiumLabel>}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleExportOBJ}
+                  disabled={!svgState}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {isPremium ? "Export OBJ" : <PremiumLabel>Export OBJ</PremiumLabel>}
+                </Button>
+                {settings.jigEnabled && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleExportJigSTL}
+                    disabled={!svgState || !jigFits}
+                    title={!jigFits ? "Jig doesn't fit — adjust dimensions" : undefined}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Jig STL
+                  </Button>
+                )}
+              </div>
             )}
 
             {/* Settings header + reset (advanced only) */}
             {sidebarMode === "advanced" && (
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Settings</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setSettings((prev) => ({
-                    ...DEFAULT_SETTINGS,
-                    // Keep auto-extracted preview colours from the uploaded SVG
-                    shellColor: prev.shellColor,
-                    clickerColor: prev.clickerColor,
-                  }));
-                  setDraftSizeMm(String(DEFAULT_SETTINGS.targetSizeMm));
-                }}
-                className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                title="Reset all sliders and checkboxes to defaults"
-              >
-                <RotateCcw className="h-3 w-3" />
-                Reset
-              </button>
-            </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Settings</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSettings((prev) => ({
+                      ...DEFAULT_SETTINGS,
+                      // Keep auto-extracted preview colours from the uploaded SVG
+                      shellColor: prev.shellColor,
+                      clickerColor: prev.clickerColor,
+                    }));
+                    setDraftSizeMm(String(DEFAULT_SETTINGS.targetSizeMm));
+                  }}
+                  className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  title="Reset all sliders and checkboxes to defaults"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Reset
+                </button>
+              </div>
             )}
 
             {/* ── Outer Shell (basics) ── */}
-            {sidebarMode === "advanced" && (
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                Outer Shell
-              </h2>
-              <div className="space-y-5">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Preview color</span>
-                  <DebouncedColorInput
-                    value={settings.shellColor ?? DEFAULT_SETTINGS.shellColor}
-                    onChange={(v) => setSetting("shellColor", v)}
-                    className="h-8 w-14 rounded border border-input cursor-pointer bg-transparent p-0.5"
+            {sidebarMode === "advanced" && settings.product !== "standee" && settings.product !== "keychain" && (
+              <div>
+                <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-4 mt-6 border-b border-border/40 pb-2">
+                  Outer Shell
+                </h2>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between bg-muted/40 p-3 rounded-lg border border-border/50 shadow-sm">
+                    <span className="text-sm text-muted-foreground">Preview color</span>
+                    <DebouncedColorInput
+                      value={settings.shellColor ?? DEFAULT_SETTINGS.shellColor}
+                      onChange={(v) => setSetting("shellColor", v)}
+                      className="h-8 w-14 rounded border border-input cursor-pointer bg-transparent p-0.5"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none bg-muted/40 p-3 rounded-lg border border-border/50 shadow-sm"
+                    onClick={(e) => {
+                      if (!isPremium) {
+                        e.preventDefault();
+                        requirePremium("mirror_shell");
+                      }
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={settings.mirrorShell ?? false}
+                      onChange={(e) => isPremium && setSetting("mirrorShell", e.target.checked)}
+                      disabled={!isPremium}
+                      className="h-4 w-4 rounded accent-primary"
+                    />
+                    <span className="text-sm">
+                      {isPremium ? "Mirror left-right" : <PremiumLabel>Mirror left-right</PremiumLabel>}
+                    </span>
+                    <ResetButton
+                      isDefault={(settings.mirrorShell ?? false) === DEFAULT_SETTINGS.mirrorShell}
+                      onReset={() => setSetting("mirrorShell", DEFAULT_SETTINGS.mirrorShell)}
+                      defaultLabel={DEFAULT_SETTINGS.mirrorShell ? "on" : "off"}
+                    />
+                  </label>
+                  <SliderRow
+                    label="Solid floor"
+                    value={settings.shellSolidFloor ?? DEFAULT_SETTINGS.shellSolidFloor}
+                    min={0.5}
+                    max={10}
+                    step={0.01}
+                    unit="mm"
+                    onChange={(v) => setSetting("shellSolidFloor", v)}
+                    defaultValue={DEFAULT_SETTINGS.shellSolidFloor}
+                    onReset={() => setSetting("shellSolidFloor", DEFAULT_SETTINGS.shellSolidFloor)}
+                    commitOnRelease
+                    {...hl(["shell_floor"])}
+                  />
+                  <SliderRow
+                    label="Switch housing"
+                    value={settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing}
+                    min={3}
+                    max={30}
+                    step={0.01}
+                    unit="mm"
+                    onChange={(v) => setSetting("shellSwitchHousing", v)}
+                    defaultValue={DEFAULT_SETTINGS.shellSwitchHousing}
+                    onReset={() => setSetting("shellSwitchHousing", DEFAULT_SETTINGS.shellSwitchHousing)}
+                    commitOnRelease
+                    {...hl(["shell_walls", "shell_pin"])}
+                  />
+                  <SliderRow
+                    label="Wall extension"
+                    value={settings.shellWallExtension ?? DEFAULT_SETTINGS.shellWallExtension}
+                    min={0}
+                    max={30}
+                    step={0.01}
+                    unit="mm"
+                    onChange={(v) => setSetting("shellWallExtension", v)}
+                    defaultValue={DEFAULT_SETTINGS.shellWallExtension}
+                    onReset={() => setSetting("shellWallExtension", DEFAULT_SETTINGS.shellWallExtension)}
+                    commitOnRelease
+                    {...hl(["shell_extension"])}
+                  />
+                  <div className="flex items-center justify-between text-xs text-muted-foreground py-0.5">
+                    <span>Total depth</span>
+                    <span className="font-mono font-medium text-foreground">
+                      {getShellTotalDepth(settings).toFixed(1)} mm
+                    </span>
+                  </div>
+                  <SliderRow
+                    label="Wall thickness"
+                    value={settings.insetAmount}
+                    min={0.5}
+                    max={5}
+                    step={0.01}
+                    unit="mm"
+                    onChange={(v) => setSetting("insetAmount", v)}
+                    commitOnRelease
+                    defaultValue={DEFAULT_SETTINGS.insetAmount}
+                    onReset={() => setSetting("insetAmount", DEFAULT_SETTINGS.insetAmount)}
+                    {...hl(["shell_outer", "shell_floor", "shell_walls"])}
                   />
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer select-none"
-                  onClick={(e) => {
-                    if (!isPremium) {
-                      e.preventDefault();
-                      requirePremium("mirror_shell");
-                    }
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={settings.mirrorShell ?? false}
-                    onChange={(e) => isPremium && setSetting("mirrorShell", e.target.checked)}
-                    disabled={!isPremium}
-                    className="h-4 w-4 rounded accent-primary"
-                  />
-                  <span className="text-sm">
-                    {isPremium ? "Mirror left-right" : <PremiumLabel>Mirror left-right</PremiumLabel>}
-                  </span>
-                  <ResetButton
-                    isDefault={(settings.mirrorShell ?? false) === DEFAULT_SETTINGS.mirrorShell}
-                    onReset={() => setSetting("mirrorShell", DEFAULT_SETTINGS.mirrorShell)}
-                    defaultLabel={DEFAULT_SETTINGS.mirrorShell ? "on" : "off"}
-                  />
-                </label>
-                <SliderRow
-                  label="Solid floor"
-                  value={settings.shellSolidFloor ?? DEFAULT_SETTINGS.shellSolidFloor}
-                  min={0.5}
-                  max={10}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("shellSolidFloor", v)}
-                  defaultValue={DEFAULT_SETTINGS.shellSolidFloor}
-                  onReset={() => setSetting("shellSolidFloor", DEFAULT_SETTINGS.shellSolidFloor)}
-                  commitOnRelease
-                  {...hl(["shell_floor"])}
-                />
-                <SliderRow
-                  label="Switch housing"
-                  value={settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing}
-                  min={3}
-                  max={30}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("shellSwitchHousing", v)}
-                  defaultValue={DEFAULT_SETTINGS.shellSwitchHousing}
-                  onReset={() => setSetting("shellSwitchHousing", DEFAULT_SETTINGS.shellSwitchHousing)}
-                  commitOnRelease
-                  {...hl(["shell_walls", "shell_pin"])}
-                />
-                <SliderRow
-                  label="Wall extension"
-                  value={settings.shellWallExtension ?? DEFAULT_SETTINGS.shellWallExtension}
-                  min={0}
-                  max={30}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("shellWallExtension", v)}
-                  defaultValue={DEFAULT_SETTINGS.shellWallExtension}
-                  onReset={() => setSetting("shellWallExtension", DEFAULT_SETTINGS.shellWallExtension)}
-                  commitOnRelease
-                  {...hl(["shell_extension"])}
-                />
-                <div className="flex items-center justify-between text-xs text-muted-foreground py-0.5">
-                  <span>Total depth</span>
-                  <span className="font-mono font-medium text-foreground">
-                    {getShellTotalDepth(settings).toFixed(1)} mm
-                  </span>
-                </div>
-                <SliderRow
-                  label="Wall thickness"
-                  value={settings.insetAmount}
-                  min={0.5}
-                  max={5}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("insetAmount", v)}
-                  commitOnRelease
-                  defaultValue={DEFAULT_SETTINGS.insetAmount}
-                  onReset={() => setSetting("insetAmount", DEFAULT_SETTINGS.insetAmount)}
-                  {...hl(["shell_outer", "shell_floor", "shell_walls"])}
-                />
               </div>
-            </div>
             )}
 
             {/* ── Mechanisms ── */}
-            {sidebarMode === "advanced" && (
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                Mechanisms
-              </h2>
-              <div className="space-y-3">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={settings.housingsEnabled ?? true}
-                    onChange={(e) => setSetting("housingsEnabled", e.target.checked)}
-                    className="h-4 w-4 rounded accent-primary"
-                  />
-                  <span className="text-sm">Inner housings</span>
-                  <InfoTooltip text="When off, all MX mechanism geometry (keycap pocket, switch cavity, boss, pin holes) is removed from both pieces. Use this for decorative two-piece shells." />
-                </label>
-              </div>
-            </div>
-            )}
-
-            {/* ── Magnet Controls ── */}
-            {sidebarMode === "advanced" && settings.product === "magnet" && (
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                Magnet
-              </h2>
-              <div className="space-y-5">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={settings.magnetHoleEnabled ?? false}
-                    onChange={(e) => setSetting("magnetHoleEnabled", e.target.checked)}
-                    className="h-4 w-4 rounded accent-primary"
-                  />
-                  <span className="text-sm">Cut magnet hole</span>
-                </label>
-                {settings.magnetHoleEnabled && (
-                  <>
-                    <SliderRow
-                      label="Magnet diameter"
-                      value={settings.magnetDiameter ?? DEFAULT_SETTINGS.magnetDiameter}
-                      min={1}
-                      max={30}
-                      step={0.1}
-                      unit="mm"
-                      onChange={(v) => setSetting("magnetDiameter", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.magnetDiameter}
-                      onReset={() => setSetting("magnetDiameter", DEFAULT_SETTINGS.magnetDiameter)}
-                    />
-                    <SliderRow
-                      label="Magnet depth"
-                      value={settings.magnetDepth ?? DEFAULT_SETTINGS.magnetDepth}
-                      min={0.5}
-                      max={10}
-                      step={0.1}
-                      unit="mm"
-                      onChange={(v) => setSetting("magnetDepth", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.magnetDepth}
-                      onReset={() => setSetting("magnetDepth", DEFAULT_SETTINGS.magnetDepth)}
-                    />
-                  </>
-                )}
-              </div>
-            </div>
-            )}
-
-            {/* ── Key Ring (outer shell only) ── */}
-            {sidebarMode === "advanced" && (
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                Key Ring
-              </h2>
-              <div className="space-y-5">
-                <label className="flex items-center gap-2 cursor-pointer select-none"
-                  onClick={(e) => {
-                    if (!isPremium) {
-                      e.preventDefault();
-                      requirePremium("key_ring");
-                    }
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={settings.keyRingEnabled ?? true}
-                    onChange={(e) => isPremium && setSetting("keyRingEnabled", e.target.checked)}
-                    disabled={!isPremium}
-                    className="h-4 w-4 rounded accent-primary"
-                  />
-                  <span className="text-sm">
-                    {isPremium ? "Add key ring lug" : <PremiumLabel>Add key ring lug</PremiumLabel>}
-                  </span>
-                  <InfoTooltip text="Adds a cylindrical tab with a through-hole at the top-centre of the outer shell so you can clip on a real key ring or carabiner. Inner clicker is unchanged." />
-                </label>
-                {settings.keyRingEnabled && (
-                  <div className="space-y-5 pl-6">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-muted-foreground w-24 shrink-0">Position</span>
-                      <div className="flex gap-1">
-                        {(["top", "bottom"] as const).map((pos) => (
-                          <button
-                            key={pos}
-                            type="button"
-                            onClick={() => setSetting("keyRingPosition", pos)}
-                            className={`px-3 py-0.5 text-xs rounded border transition-colors ${
-                              (settings.keyRingPosition ?? "top") === pos
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "border-border hover:border-primary/60"
-                            }`}
-                          >
-                            {pos.charAt(0).toUpperCase() + pos.slice(1)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <SliderRow
-                      label="Cylinder diameter"
-                      value={settings.keyRingOuterDiameter ?? DEFAULT_SETTINGS.keyRingOuterDiameter}
-                      min={6}
-                      max={20}
-                      step={0.1}
-                      unit="mm"
-                      onChange={(v) => setSetting("keyRingOuterDiameter", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.keyRingOuterDiameter}
-                      onReset={() => setSetting("keyRingOuterDiameter", DEFAULT_SETTINGS.keyRingOuterDiameter)}
-                    />
-                    <SliderRow
-                      label="Hole diameter"
-                      value={settings.keyRingHoleDiameter ?? DEFAULT_SETTINGS.keyRingHoleDiameter}
-                      min={2}
-                      max={Math.max(2, (settings.keyRingOuterDiameter ?? DEFAULT_SETTINGS.keyRingOuterDiameter) - 0.8)}
-                      step={0.1}
-                      unit="mm"
-                      onChange={(v) => setSetting("keyRingHoleDiameter", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.keyRingHoleDiameter}
-                      onReset={() => setSetting("keyRingHoleDiameter", DEFAULT_SETTINGS.keyRingHoleDiameter)}
-                    />
-                    <SliderRow
-                      label="Thickness (Z)"
-                      value={settings.keyRingThickness ?? DEFAULT_SETTINGS.keyRingThickness}
-                      min={0.5}
-                      max={5}
-                      step={0.1}
-                      unit="mm"
-                      onChange={(v) => setSetting("keyRingThickness", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.keyRingThickness}
-                      onReset={() => setSetting("keyRingThickness", DEFAULT_SETTINGS.keyRingThickness)}
-                    />
-                    <SliderRow
-                      label="Nudge X"
-                      value={settings.keyRingNudgeX ?? DEFAULT_SETTINGS.keyRingNudgeX}
-                      min={-20}
-                      max={20}
-                      step={0.5}
-                      unit="mm"
-                      onChange={(v) => setSetting("keyRingNudgeX", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.keyRingNudgeX}
-                      onReset={() => setSetting("keyRingNudgeX", DEFAULT_SETTINGS.keyRingNudgeX)}
-                    />
-                    <SliderRow
-                      label="Nudge Y"
-                      value={settings.keyRingNudgeY ?? DEFAULT_SETTINGS.keyRingNudgeY}
-                      min={-20}
-                      max={20}
-                      step={0.5}
-                      unit="mm"
-                      onChange={(v) => setSetting("keyRingNudgeY", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.keyRingNudgeY}
-                      onReset={() => setSetting("keyRingNudgeY", DEFAULT_SETTINGS.keyRingNudgeY)}
-                    />
-                    <SliderRow
-                      label="Nudge Z"
-                      value={settings.keyRingNudgeZ ?? DEFAULT_SETTINGS.keyRingNudgeZ}
-                      min={-10}
-                      max={10}
-                      step={0.5}
-                      unit="mm"
-                      onChange={(v) => setSetting("keyRingNudgeZ", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.keyRingNudgeZ}
-                      onReset={() => setSetting("keyRingNudgeZ", DEFAULT_SETTINGS.keyRingNudgeZ)}
-                    />
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Lug sits flush with the bottom of the shell. Use Position to anchor it to the top or bottom edge, then Nudge X/Y/Z for fine adjustment.
-                    </p>
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={settings.keyRingOnShell ?? true}
-                        onChange={(e) => setSetting("keyRingOnShell", e.target.checked)}
-                        className="h-4 w-4 rounded accent-primary"
-                      />
-                      <span className="text-sm">On outer shell</span>
-                      <InfoTooltip text="Show the key-ring lug on the outer shell piece." />
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={settings.keyRingOnClicker ?? false}
-                        onChange={(e) => setSetting("keyRingOnClicker", e.target.checked)}
-                        className="h-4 w-4 rounded accent-primary"
-                      />
-                      <span className="text-sm">On inner clicker</span>
-                      <InfoTooltip text="Adds an identical key-ring lug to the inner clicker piece, using the same size, position, and nudge settings." />
-                    </label>
-                  </div>
-                )}
-              </div>
-            </div>
-            )}
-
-            {/* ── Inner Clicker (basics) ── */}
-            {sidebarMode === "advanced" && (
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                Inner Clicker
-              </h2>
-              <div className="space-y-5">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Preview color</span>
-                  <DebouncedColorInput
-                    value={settings.clickerColor ?? DEFAULT_SETTINGS.clickerColor}
-                    onChange={(v) => setSetting("clickerColor", v)}
-                    className="h-8 w-14 rounded border border-input cursor-pointer bg-transparent p-0.5"
-                  />
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={settings.mirrorClicker ?? false}
-                    onChange={(e) => setSetting("mirrorClicker", e.target.checked)}
-                    className="h-4 w-4 rounded accent-primary"
-                  />
-                  <span className="text-sm">Mirror left-right</span>
-                  <ResetButton
-                    isDefault={(settings.mirrorClicker ?? false) === DEFAULT_SETTINGS.mirrorClicker}
-                    onReset={() => setSetting("mirrorClicker", DEFAULT_SETTINGS.mirrorClicker)}
-                    defaultLabel={DEFAULT_SETTINGS.mirrorClicker ? "on" : "off"}
-                  />
-                </label>
-                <SliderRow
-                  label="Total thickness"
-                  value={settings.clickerTotalDepth ?? DEFAULT_SETTINGS.clickerTotalDepth}
-                  min={3}
-                  max={30}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("clickerTotalDepth", v)}
-                  commitOnRelease
-                  defaultValue={DEFAULT_SETTINGS.clickerTotalDepth}
-                  onReset={() => setSetting("clickerTotalDepth", DEFAULT_SETTINGS.clickerTotalDepth)}
-                  {...hl(["click_floor", "click_walls"])}
-                />
-                <SliderRow
-                  label="Solid floor"
-                  value={settings.clickerFloorDepth ?? DEFAULT_SETTINGS.clickerFloorDepth}
-                  min={0.5}
-                  max={Math.max(0.5, (settings.clickerTotalDepth ?? DEFAULT_SETTINGS.clickerTotalDepth) - 1)}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("clickerFloorDepth", v)}
-                  commitOnRelease
-                  defaultValue={DEFAULT_SETTINGS.clickerFloorDepth}
-                  onReset={() => setSetting("clickerFloorDepth", DEFAULT_SETTINGS.clickerFloorDepth)}
-                  {...hl(["click_floor"])}
-                />
-              </div>
-            </div>
-            )}
-
-            {/* ── Fit Clearance ── */}
-            {sidebarMode === "advanced" && (
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                Fit Clearance
-              </h2>
-              <div className="space-y-5">
-                <SliderRow
-                  label="XY gap"
-                  value={settings.clearanceMm ?? DEFAULT_SETTINGS.clearanceMm}
-                  min={0.05}
-                  max={1.0}
-                  step={0.01}
-                  unit="mm"
-                  onChange={(v) => setSetting("clearanceMm", v)}
-                  commitOnRelease
-                  defaultValue={DEFAULT_SETTINGS.clearanceMm}
-                  onReset={() => setSetting("clearanceMm", DEFAULT_SETTINGS.clearanceMm)}
-                  {...hl(["shell_outer", "shell_floor", "shell_walls"])}
-                />
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Gap added between the clicker body and the shell pocket so the clicker slides in cleanly.
-                </p>
-              </div>
-            </div>
-            )}
-
-            {/* ── UV Print Jig ── */}
-            {sidebarMode === "advanced" && (
-            <JigPanel
-              settings={settings}
-              setSetting={setSetting}
-              extrudeDepth={getShellTotalDepth(settings)}
-              innerJigOutput={innerJigOutput}
-              outerJigOutput={outerJigOutput}
-            />
-            )}
-
-            {/* ── Advanced disclosure ── */}
-            {sidebarMode === "advanced" && (
-            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-              <CollapsibleTrigger asChild>
-                <button
-                  type="button"
-                  className="group flex w-full items-center justify-between rounded-lg border border-border/60 bg-accent/20 hover:bg-accent/40 px-3 py-2.5 transition-colors"
-                >
-                  <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground group-hover:text-foreground">
-                    <Settings2 className="h-3.5 w-3.5" />
-                    Advanced
-                  </span>
-                  <ChevronDown
-                    className={`h-4 w-4 text-muted-foreground transition-transform ${advancedOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pt-5 space-y-6">
-
-                {/* Cutout layout — swap functional cutouts between the two parts */}
+            {sidebarMode === "advanced" && settings.product !== "standee" && settings.product !== "keychain" && (
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                  Mechanisms
+                </h2>
                 <div className="space-y-3">
                   <label className="flex items-center gap-2 cursor-pointer select-none">
                     <input
                       type="checkbox"
-                      checked={settings.swapCutouts ?? false}
-                      onChange={(e) => setSetting("swapCutouts", e.target.checked)}
+                      checked={settings.housingsEnabled ?? true}
+                      onChange={(e) => setSetting("housingsEnabled", e.target.checked)}
                       className="h-4 w-4 rounded accent-primary"
                     />
-                    <span className="text-sm">Swap stem-mount and switch-cavity cutouts</span>
-                    <InfoTooltip text="Flips which part holds which feature. Default: outer shell has the keycap square pocket + 5 MX pin holes, inner clicker has the switch cavity + actuator boss with cross pocket. When on: outer shell gets the switch cavity + actuator boss (with cross pocket for the MX stem), and the inner clicker carries the switch-housing square cavity with the 5 MX pin holes punched inside it (no boss). All other geometry stays unchanged." />
-                    <ResetButton
-                      isDefault={(settings.swapCutouts ?? false) === DEFAULT_SETTINGS.swapCutouts}
-                      onReset={() => setSetting("swapCutouts", DEFAULT_SETTINGS.swapCutouts)}
-                      defaultLabel={DEFAULT_SETTINGS.swapCutouts ? "on" : "off"}
-                    />
+                    <span className="text-sm">Inner housings</span>
+                    <InfoTooltip text="When off, all MX mechanism geometry (keycap pocket, switch cavity, boss, pin holes) is removed from both pieces. Use this for decorative two-piece shells." />
                   </label>
                 </div>
+              </div>
+            )}
 
-                {/* Color regions — only shown when the SVG actually has them */}
-                {colorRegions.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">
-                      Color Regions
-                      <InfoTooltip text="Each non-silhouette fill in the SVG becomes a flat extruded slab flush with the bottom face of the outer shell. Sized for multi-color FDM (single-extruder color swap or AMS) — typically 0.4–0.6 mm." />
-                    </div>
-                    <div className="space-y-3 pl-0">
-                      <SliderRow
-                        label="Layer thickness"
-                        value={settings.colorLayerThickness ?? DEFAULT_SETTINGS.colorLayerThickness}
-                        min={0.1}
-                        max={1.0}
-                        step={0.01}
-                        unit="mm"
-                        onChange={(v) => setSetting("colorLayerThickness", v)}
-                        defaultValue={DEFAULT_SETTINGS.colorLayerThickness}
-                        onReset={() => setSetting("colorLayerThickness", DEFAULT_SETTINGS.colorLayerThickness)}
-                        commitOnRelease
-                      />
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {colorRegions.length} region{colorRegions.length === 1 ? "" : "s"} detected.
-                        Exported as a composite outer shell in 3MF and as a vertex-color OBJ zip;
-                        STL drops color information.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Switch cavity (keycap + cavity dims) */}
-                <div>
-                  <div className="flex items-center gap-1.5 mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">
-                    Switch Cavity
-                    <InfoTooltip text="Cherry MX–compatible defaults. Only adjust if you're using a non-standard switch or want a deliberately loose/tight fit." />
-                  </div>
-                  <div className="space-y-5">
-                    <SliderRow
-                      label="Keycap pocket depth"
-                      value={settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth}
-                      min={2}
-                      max={settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing}
-                      step={0.01}
-                      unit="mm"
-                      onChange={(v) => setSetting("keycapPocketDepth", v)}
-                      defaultValue={DEFAULT_SETTINGS.keycapPocketDepth}
-                      onReset={() => setSetting("keycapPocketDepth", DEFAULT_SETTINGS.keycapPocketDepth)}
-                      commitOnRelease
-                      {...hl(["shell_walls"])}
-                    />
-                    <SliderRow
-                      label="Keycap square"
-                      value={settings.keycapSize}
-                      min={10}
-                      max={22}
-                      step={0.01}
-                      unit="mm"
-                      onChange={(v) => setSetting("keycapSize", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.keycapSize}
-                      onReset={() => setSetting("keycapSize", DEFAULT_SETTINGS.keycapSize)}
-                      {...hl(["shell_walls"])}
-                    />
-                    <SliderRow
-                      label="Switch cavity size"
-                      value={settings.clickerSquareSize ?? DEFAULT_SETTINGS.clickerSquareSize}
-                      min={10}
-                      max={30}
-                      step={0.01}
-                      unit="mm"
-                      onChange={(v) => setSetting("clickerSquareSize", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.clickerSquareSize}
-                      onReset={() => setSetting("clickerSquareSize", DEFAULT_SETTINGS.clickerSquareSize)}
-                      {...hl(["click_walls"])}
-                    />
-                    <SliderRow
-                      label="Switch cavity depth"
-                      value={settings.clickerSquareDepth ?? DEFAULT_SETTINGS.clickerSquareDepth}
-                      min={1}
-                      max={Math.max(1, (settings.clickerTotalDepth ?? DEFAULT_SETTINGS.clickerTotalDepth) - (settings.clickerFloorDepth ?? DEFAULT_SETTINGS.clickerFloorDepth))}
-                      step={0.01}
-                      unit="mm"
-                      onChange={(v) => setSetting("clickerSquareDepth", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.clickerSquareDepth}
-                      onReset={() => setSetting("clickerSquareDepth", DEFAULT_SETTINGS.clickerSquareDepth)}
-                      {...hl(["click_walls"])}
-                    />
-                  </div>
-                </div>
-
-                {/* Actuator boss + MX cross pocket */}
-                <div className="border-t border-border/40 pt-5">
-                  <div className="flex items-center gap-1.5 mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">
-                    Actuator Boss
-                    <InfoTooltip text="The cylindrical boss on the clicker that engages the MX switch stem. Cross pocket sits on top." />
-                  </div>
-                  <div className="space-y-5">
-                    <SliderRow
-                      label="Boss diameter"
-                      value={settings.bossDiameter ?? DEFAULT_SETTINGS.bossDiameter}
-                      min={1}
-                      max={15}
-                      step={0.01}
-                      unit="mm"
-                      onChange={(v) => setSetting("bossDiameter", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.bossDiameter}
-                      onReset={() => setSetting("bossDiameter", DEFAULT_SETTINGS.bossDiameter)}
-                      {...hl(["click_boss"])}
-                    />
-                    <SliderRow
-                      label="Boss height"
-                      value={settings.bossHeight ?? DEFAULT_SETTINGS.bossHeight}
-                      min={0.5}
-                      max={15}
-                      step={0.01}
-                      unit="mm"
-                      onChange={(v) => setSetting("bossHeight", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.bossHeight}
-                      onReset={() => setSetting("bossHeight", DEFAULT_SETTINGS.bossHeight)}
-                      {...hl(["click_boss"])}
-                    />
-                    <SliderRow
-                      label="Boss floor gap"
-                      value={settings.bossFloorGap ?? DEFAULT_SETTINGS.bossFloorGap}
-                      min={0}
-                      max={Math.max(0, (settings.clickerFloorDepth ?? DEFAULT_SETTINGS.clickerFloorDepth) - 0.1)}
-                      step={0.01}
-                      unit="mm"
-                      onChange={(v) => setSetting("bossFloorGap", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.bossFloorGap}
-                      onReset={() => setSetting("bossFloorGap", DEFAULT_SETTINGS.bossFloorGap)}
-                      {...hl(["click_boss"])}
-                    />
-                    <div className="pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-                      MX cross pocket
-                    </div>
-                    <SliderRow
-                      label="Cross size"
-                      value={settings.crossSize ?? DEFAULT_SETTINGS.crossSize}
-                      min={2}
-                      max={6}
-                      step={0.01}
-                      unit="mm"
-                      onChange={(v) => setSetting("crossSize", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.crossSize}
-                      onReset={() => setSetting("crossSize", DEFAULT_SETTINGS.crossSize)}
-                      {...hl(["click_boss"])}
-                    />
-                    <SliderRow
-                      label="Cross depth"
-                      value={settings.crossDepth ?? DEFAULT_SETTINGS.crossDepth}
-                      min={0.5}
-                      max={Math.max(0.5, (settings.bossHeight ?? DEFAULT_SETTINGS.bossHeight) - 0.05)}
-                      step={0.01}
-                      unit="mm"
-                      onChange={(v) => setSetting("crossDepth", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.crossDepth}
-                      onReset={() => setSetting("crossDepth", DEFAULT_SETTINGS.crossDepth)}
-                      {...hl(["click_boss"])}
-                    />
-                    <SliderRow
-                      label="Arm width"
-                      value={settings.crossArmWidth ?? DEFAULT_SETTINGS.crossArmWidth}
-                      min={0.8}
-                      max={Math.max(0.8, (settings.crossSize ?? DEFAULT_SETTINGS.crossSize) * 0.9)}
-                      step={0.01}
-                      unit="mm"
-                      onChange={(v) => setSetting("crossArmWidth", v)}
-                      commitOnRelease
-                      defaultValue={DEFAULT_SETTINGS.crossArmWidth}
-                      onReset={() => setSetting("crossArmWidth", DEFAULT_SETTINGS.crossArmWidth)}
-                      {...hl(["click_boss"])}
-                    />
-                  </div>
-                </div>
-
-                {/* Cherry MX 5-pin holes */}
-                <div className="border-t border-border/40 pt-5 space-y-3">
+            {/* ── Magnet Controls ── */}
+            {sidebarMode === "advanced" && settings.product === "magnet" && (
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                  Magnet
+                </h2>
+                <div className="space-y-5">
                   <label className="flex items-center gap-2 cursor-pointer select-none">
                     <input
                       type="checkbox"
-                      checked={settings.pinHolesEnabled}
-                      onChange={(e) => setSetting("pinHolesEnabled", e.target.checked)}
+                      checked={settings.magnetHoleEnabled ?? false}
+                      onChange={(e) => setSetting("magnetHoleEnabled", e.target.checked)}
                       className="h-4 w-4 rounded accent-primary"
                     />
-                    <span className="text-sm">Cherry MX 5-pin holes</span>
-                    <InfoTooltip text="Punches the Cherry MX 5-pin footprint into the deepest section of the pocket: Ø4 mm center guide · Ø1.8 mm retention pegs (±5.08 mm) · Ø1.5 mm contacts (±3.81 mm / −2.54 mm). The pin section sits below the keycap square — from the pocket floor upward." />
-                    <ResetButton
-                      isDefault={settings.pinHolesEnabled === DEFAULT_SETTINGS.pinHolesEnabled}
-                      onReset={() => setSetting("pinHolesEnabled", DEFAULT_SETTINGS.pinHolesEnabled)}
-                      defaultLabel={DEFAULT_SETTINGS.pinHolesEnabled ? "on" : "off"}
-                    />
+                    <span className="text-sm">Cut magnet hole</span>
                   </label>
-                  {settings.pinHolesEnabled && (
-                    <div className="space-y-3 pl-6">
+                  {settings.magnetHoleEnabled && (
+                    <>
                       <SliderRow
-                        label="Pin section depth"
-                        value={settings.pinHoleDepth ?? DEFAULT_SETTINGS.pinHoleDepth}
+                        label="Magnet diameter"
+                        value={settings.magnetDiameter ?? DEFAULT_SETTINGS.magnetDiameter}
                         min={1}
-                        max={Math.max(1, (settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth) - 1)}
-                        step={0.01}
+                        max={30}
+                        step={0.1}
                         unit="mm"
-                        onChange={(v) => setSetting("pinHoleDepth", v)}
-                        defaultValue={DEFAULT_SETTINGS.pinHoleDepth}
-                        onReset={() => setSetting("pinHoleDepth", DEFAULT_SETTINGS.pinHoleDepth)}
+                        onChange={(v) => setSetting("magnetDiameter", v)}
                         commitOnRelease
-                        {...hl(["shell_pin"])}
+                        defaultValue={DEFAULT_SETTINGS.magnetDiameter}
+                        onReset={() => setSetting("magnetDiameter", DEFAULT_SETTINGS.magnetDiameter)}
                       />
                       <SliderRow
-                        label="Print clearance"
-                        value={settings.pinHoleRadius ?? DEFAULT_SETTINGS.pinHoleRadius}
-                        min={0}
-                        max={0.5}
-                        step={0.01}
+                        label="Magnet depth"
+                        value={settings.magnetDepth ?? DEFAULT_SETTINGS.magnetDepth}
+                        min={0.5}
+                        max={10}
+                        step={0.1}
                         unit="mm"
-                        onChange={(v) => setSetting("pinHoleRadius", v)}
+                        onChange={(v) => setSetting("magnetDepth", v)}
                         commitOnRelease
-                        defaultValue={DEFAULT_SETTINGS.pinHoleRadius}
-                        onReset={() => setSetting("pinHoleRadius", DEFAULT_SETTINGS.pinHoleRadius)}
-                        {...hl(["shell_pin"])}
+                        defaultValue={DEFAULT_SETTINGS.magnetDepth}
+                        onReset={() => setSetting("magnetDepth", DEFAULT_SETTINGS.magnetDepth)}
                       />
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── Key Ring (outer shell only) ── */}
+            {sidebarMode === "advanced" && settings.product !== "standee" && (
+              <div>
+                <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-4 mt-6 border-b border-border/40 pb-2">
+                  Key Ring
+                </h2>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer select-none bg-muted/40 p-3 rounded-lg border border-border/50 shadow-sm"
+                    onClick={(e) => {
+                      if (!isPremium) {
+                        e.preventDefault();
+                        requirePremium("key_ring");
+                      }
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={settings.keyRingEnabled ?? true}
+                      onChange={(e) => isPremium && setSetting("keyRingEnabled", e.target.checked)}
+                      disabled={!isPremium}
+                      className="h-4 w-4 rounded accent-primary"
+                    />
+                    <span className="text-sm">
+                      {isPremium ? "Add key ring lug" : <PremiumLabel>Add key ring lug</PremiumLabel>}
+                    </span>
+                    <InfoTooltip text="Adds a cylindrical tab with a through-hole at the top-centre of the outer shell so you can clip on a real key ring or carabiner. Inner clicker is unchanged." />
+                  </label>
+                  {settings.keyRingEnabled && (
+                    <div className="space-y-4 bg-muted/20 p-4 rounded-lg border border-border/50 mt-1 relative">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-muted-foreground w-24 shrink-0">Position</span>
+                        <div className="flex gap-1">
+                          {(["top", "bottom"] as const).map((pos) => (
+                            <button
+                              key={pos}
+                              type="button"
+                              onClick={() => setSetting("keyRingPosition", pos)}
+                              className={`px-3 py-0.5 text-xs rounded border transition-colors ${(settings.keyRingPosition ?? "top") === pos
+                                  ? "bg-primary text-primary-foreground border-primary"
+                                  : "border-border hover:border-primary/60"
+                                }`}
+                            >
+                              {pos.charAt(0).toUpperCase() + pos.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <SliderRow
+                      variant="plain"
+                        label="Cylinder diameter"
+                        value={settings.keyRingOuterDiameter ?? DEFAULT_SETTINGS.keyRingOuterDiameter}
+                        min={6}
+                        max={20}
+                        step={0.1}
+                        unit="mm"
+                        onChange={(v) => setSetting("keyRingOuterDiameter", v)}
+                        commitOnRelease
+                        defaultValue={DEFAULT_SETTINGS.keyRingOuterDiameter}
+                        onReset={() => setSetting("keyRingOuterDiameter", DEFAULT_SETTINGS.keyRingOuterDiameter)}
+                      />
+                      <SliderRow
+                      variant="plain"
+                        label="Hole diameter"
+                        value={settings.keyRingHoleDiameter ?? DEFAULT_SETTINGS.keyRingHoleDiameter}
+                        min={2}
+                        max={Math.max(2, (settings.keyRingOuterDiameter ?? DEFAULT_SETTINGS.keyRingOuterDiameter) - 0.8)}
+                        step={0.1}
+                        unit="mm"
+                        onChange={(v) => setSetting("keyRingHoleDiameter", v)}
+                        commitOnRelease
+                        defaultValue={DEFAULT_SETTINGS.keyRingHoleDiameter}
+                        onReset={() => setSetting("keyRingHoleDiameter", DEFAULT_SETTINGS.keyRingHoleDiameter)}
+                      />
+                      <SliderRow
+                      variant="plain"
+                        label="Thickness (Z)"
+                        value={settings.keyRingThickness ?? DEFAULT_SETTINGS.keyRingThickness}
+                        min={0.5}
+                        max={5}
+                        step={0.1}
+                        unit="mm"
+                        onChange={(v) => setSetting("keyRingThickness", v)}
+                        commitOnRelease
+                        defaultValue={DEFAULT_SETTINGS.keyRingThickness}
+                        onReset={() => setSetting("keyRingThickness", DEFAULT_SETTINGS.keyRingThickness)}
+                      />
+                      <SliderRow
+                      variant="plain"
+                        label="Nudge X"
+                        value={settings.keyRingNudgeX ?? DEFAULT_SETTINGS.keyRingNudgeX}
+                        min={-20}
+                        max={20}
+                        step={0.5}
+                        unit="mm"
+                        onChange={(v) => setSetting("keyRingNudgeX", v)}
+                        commitOnRelease
+                        defaultValue={DEFAULT_SETTINGS.keyRingNudgeX}
+                        onReset={() => setSetting("keyRingNudgeX", DEFAULT_SETTINGS.keyRingNudgeX)}
+                      />
+                      <SliderRow
+                      variant="plain"
+                        label="Nudge Y"
+                        value={settings.keyRingNudgeY ?? DEFAULT_SETTINGS.keyRingNudgeY}
+                        min={-20}
+                        max={20}
+                        step={0.5}
+                        unit="mm"
+                        onChange={(v) => setSetting("keyRingNudgeY", v)}
+                        commitOnRelease
+                        defaultValue={DEFAULT_SETTINGS.keyRingNudgeY}
+                        onReset={() => setSetting("keyRingNudgeY", DEFAULT_SETTINGS.keyRingNudgeY)}
+                      />
+                      <SliderRow
+                      variant="plain"
+                        label="Nudge Z"
+                        value={settings.keyRingNudgeZ ?? DEFAULT_SETTINGS.keyRingNudgeZ}
+                        min={-10}
+                        max={10}
+                        step={0.5}
+                        unit="mm"
+                        onChange={(v) => setSetting("keyRingNudgeZ", v)}
+                        commitOnRelease
+                        defaultValue={DEFAULT_SETTINGS.keyRingNudgeZ}
+                        onReset={() => setSetting("keyRingNudgeZ", DEFAULT_SETTINGS.keyRingNudgeZ)}
+                      />
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Lug sits flush with the bottom of the shell. Use Position to anchor it to the top or bottom edge, then Nudge X/Y/Z for fine adjustment.
+                      </p>
+                      {settings.product !== "keychain" && (
+                        <>
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={settings.keyRingOnShell ?? true}
+                              onChange={(e) => setSetting("keyRingOnShell", e.target.checked)}
+                              className="h-4 w-4 rounded accent-primary"
+                            />
+                            <span className="text-sm">On outer shell</span>
+                            <InfoTooltip text="Show the key-ring lug on the outer shell piece." />
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={settings.keyRingOnClicker ?? false}
+                              onChange={(e) => setSetting("keyRingOnClicker", e.target.checked)}
+                              className="h-4 w-4 rounded accent-primary"
+                            />
+                            <span className="text-sm">On inner clicker</span>
+                            <InfoTooltip text="Adds an identical key-ring lug to the inner clicker piece, using the same size, position, and nudge settings." />
+                          </label>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
+              </div>
+            )}
 
-                {/* Pocket position nudge */}
-                <div className="border-t border-border/40 pt-5 space-y-3">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">
-                    Pocket position nudge
-                    <InfoTooltip text="Shifts the keycap pocket, switch cavity, and boss together as a unit. Use this to visually re-centre the switch on irregular or asymmetric shapes. Both parts move identically so they stay aligned." />
+            {/* ── Inner Clicker (basics) ── */}
+            {sidebarMode === "advanced" && (
+              <div>
+                <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-4 mt-6 border-b border-border/40 pb-2">
+                  {settings.product === "standee" ? "PLA Standee" : settings.product === "keychain" ? "Keychain" : "Inner Clicker"}
+                </h2>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between bg-muted/40 p-3 rounded-lg border border-border/50 shadow-sm">
+                    <span className="text-sm text-muted-foreground">Preview color</span>
+                    <DebouncedColorInput
+                      value={settings.clickerColor ?? DEFAULT_SETTINGS.clickerColor}
+                      onChange={(v) => setSetting("clickerColor", v)}
+                      className="h-8 w-14 rounded border border-input cursor-pointer bg-transparent p-0.5"
+                    />
                   </div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none bg-muted/40 p-3 rounded-lg border border-border/50 shadow-sm">
+                    <input
+                      type="checkbox"
+                      checked={settings.mirrorClicker ?? false}
+                      onChange={(e) => setSetting("mirrorClicker", e.target.checked)}
+                      className="h-4 w-4 rounded accent-primary"
+                    />
+                    <span className="text-sm">Mirror left-right</span>
+                    <ResetButton
+                      isDefault={(settings.mirrorClicker ?? false) === DEFAULT_SETTINGS.mirrorClicker}
+                      onReset={() => setSetting("mirrorClicker", DEFAULT_SETTINGS.mirrorClicker)}
+                      defaultLabel={DEFAULT_SETTINGS.mirrorClicker ? "on" : "off"}
+                    />
+                  </label>
                   <SliderRow
-                    label="Offset X"
-                    value={settings.pocketOffsetX ?? 0}
-                    min={-20}
-                    max={20}
-                    step={0.1}
+                    label="Total thickness"
+                    value={settings.clickerTotalDepth ?? DEFAULT_SETTINGS.clickerTotalDepth}
+                    min={3}
+                    max={30}
+                    step={0.01}
                     unit="mm"
-                    onChange={(v) => setSetting("pocketOffsetX", v)}
-                    defaultValue={DEFAULT_SETTINGS.pocketOffsetX}
-                    onReset={() => setSetting("pocketOffsetX", DEFAULT_SETTINGS.pocketOffsetX)}
-                    {...hl(["shell_walls", "click_boss", "click_walls"])}
+                    onChange={(v) => setSetting("clickerTotalDepth", v)}
+                    commitOnRelease
+                    defaultValue={DEFAULT_SETTINGS.clickerTotalDepth}
+                    onReset={() => setSetting("clickerTotalDepth", DEFAULT_SETTINGS.clickerTotalDepth)}
+                    {...hl(["click_floor", "click_walls"])}
                   />
                   <SliderRow
-                    label="Offset Y"
-                    value={settings.pocketOffsetY ?? 0}
-                    min={-20}
-                    max={20}
-                    step={0.1}
+                    label="Solid floor"
+                    value={settings.clickerFloorDepth ?? DEFAULT_SETTINGS.clickerFloorDepth}
+                    min={0.5}
+                    max={Math.max(0.5, (settings.clickerTotalDepth ?? DEFAULT_SETTINGS.clickerTotalDepth) - 1)}
+                    step={0.01}
                     unit="mm"
-                    onChange={(v) => setSetting("pocketOffsetY", v)}
-                    defaultValue={DEFAULT_SETTINGS.pocketOffsetY}
-                    onReset={() => setSetting("pocketOffsetY", DEFAULT_SETTINGS.pocketOffsetY)}
-                    {...hl(["shell_walls", "click_boss", "click_walls"])}
+                    onChange={(v) => setSetting("clickerFloorDepth", v)}
+                    commitOnRelease
+                    defaultValue={DEFAULT_SETTINGS.clickerFloorDepth}
+                    onReset={() => setSetting("clickerFloorDepth", DEFAULT_SETTINGS.clickerFloorDepth)}
+                    {...hl(["click_floor"])}
                   />
                 </div>
+              </div>
+            )}
 
-              </CollapsibleContent>
-            </Collapsible>
+            {/* ── Fit Clearance ── */}
+            {sidebarMode === "advanced" && settings.product !== "standee" && settings.product !== "keychain" && (
+              <div>
+                <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-4 mt-6 border-b border-border/40 pb-2">
+                  Fit Clearance
+                </h2>
+                <div className="space-y-2">
+                  <SliderRow
+                    label="XY gap"
+                    value={settings.clearanceMm ?? DEFAULT_SETTINGS.clearanceMm}
+                    min={0.05}
+                    max={1.0}
+                    step={0.01}
+                    unit="mm"
+                    onChange={(v) => setSetting("clearanceMm", v)}
+                    commitOnRelease
+                    defaultValue={DEFAULT_SETTINGS.clearanceMm}
+                    onReset={() => setSetting("clearanceMm", DEFAULT_SETTINGS.clearanceMm)}
+                    {...hl(["shell_outer", "shell_floor", "shell_walls"])}
+                  />
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Gap added between the clicker body and the shell pocket so the clicker slides in cleanly.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* ── UV Print Jig ── */}
+            {sidebarMode === "advanced" && (
+              <JigPanel
+                settings={settings}
+                setSetting={setSetting}
+                extrudeDepth={getShellTotalDepth(settings)}
+                innerJigOutput={innerJigOutput}
+                outerJigOutput={outerJigOutput}
+              />
+            )}
+
+            {/* ── Advanced disclosure ── */}
+            {sidebarMode === "advanced" && (
+              <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="group flex w-full items-center justify-between rounded-lg border border-border/60 bg-accent/20 hover:bg-accent/40 px-3 py-2.5 transition-colors"
+                  >
+                    <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground group-hover:text-foreground">
+                      <Settings2 className="h-3.5 w-3.5" />
+                      Advanced
+                    </span>
+                    <ChevronDown
+                      className={`h-4 w-4 text-muted-foreground transition-transform ${advancedOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-5 space-y-6">
+
+                  {/* Cutout layout — swap functional cutouts between the two parts */}
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer select-none bg-muted/40 p-3 rounded-lg border border-border/50 shadow-sm">
+                      <input
+                        type="checkbox"
+                        checked={settings.swapCutouts ?? false}
+                        onChange={(e) => setSetting("swapCutouts", e.target.checked)}
+                        className="h-4 w-4 rounded accent-primary"
+                      />
+                      <span className="text-sm">Swap stem-mount and switch-cavity cutouts</span>
+                      <InfoTooltip text="Flips which part holds which feature. Default: outer shell has the keycap square pocket + 5 MX pin holes, inner clicker has the switch cavity + actuator boss with cross pocket. When on: outer shell gets the switch cavity + actuator boss (with cross pocket for the MX stem), and the inner clicker carries the switch-housing square cavity with the 5 MX pin holes punched inside it (no boss). All other geometry stays unchanged." />
+                      <ResetButton
+                        isDefault={(settings.swapCutouts ?? false) === DEFAULT_SETTINGS.swapCutouts}
+                        onReset={() => setSetting("swapCutouts", DEFAULT_SETTINGS.swapCutouts)}
+                        defaultLabel={DEFAULT_SETTINGS.swapCutouts ? "on" : "off"}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Color regions — only shown when the SVG actually has them */}
+                  {colorRegions.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">
+                        Color Regions
+                        <InfoTooltip text="Each non-silhouette fill in the SVG becomes a flat extruded slab flush with the bottom face of the outer shell. Sized for multi-color FDM (single-extruder color swap or AMS) — typically 0.4–0.6 mm." />
+                      </div>
+                      <div className="space-y-3 pl-0">
+                        <SliderRow
+                          label="Layer thickness"
+                          value={settings.colorLayerThickness ?? DEFAULT_SETTINGS.colorLayerThickness}
+                          min={0.1}
+                          max={1.0}
+                          step={0.01}
+                          unit="mm"
+                          onChange={(v) => setSetting("colorLayerThickness", v)}
+                          defaultValue={DEFAULT_SETTINGS.colorLayerThickness}
+                          onReset={() => setSetting("colorLayerThickness", DEFAULT_SETTINGS.colorLayerThickness)}
+                          commitOnRelease
+                        />
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {colorRegions.length} region{colorRegions.length === 1 ? "" : "s"} detected.
+                          Exported as a composite outer shell in 3MF and as a vertex-color OBJ zip;
+                          STL drops color information.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Switch cavity (keycap + cavity dims) */}
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">
+                      Switch Cavity
+                      <InfoTooltip text="Cherry MX–compatible defaults. Only adjust if you're using a non-standard switch or want a deliberately loose/tight fit." />
+                    </div>
+                    <div className="space-y-5">
+                      <SliderRow
+                        label="Keycap pocket depth"
+                        value={settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth}
+                        min={2}
+                        max={settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing}
+                        step={0.01}
+                        unit="mm"
+                        onChange={(v) => setSetting("keycapPocketDepth", v)}
+                        defaultValue={DEFAULT_SETTINGS.keycapPocketDepth}
+                        onReset={() => setSetting("keycapPocketDepth", DEFAULT_SETTINGS.keycapPocketDepth)}
+                        commitOnRelease
+                        {...hl(["shell_walls"])}
+                      />
+                      <SliderRow
+                        label="Keycap square"
+                        value={settings.keycapSize}
+                        min={10}
+                        max={22}
+                        step={0.01}
+                        unit="mm"
+                        onChange={(v) => setSetting("keycapSize", v)}
+                        commitOnRelease
+                        defaultValue={DEFAULT_SETTINGS.keycapSize}
+                        onReset={() => setSetting("keycapSize", DEFAULT_SETTINGS.keycapSize)}
+                        {...hl(["shell_walls"])}
+                      />
+                      <SliderRow
+                        label="Switch cavity size"
+                        value={settings.clickerSquareSize ?? DEFAULT_SETTINGS.clickerSquareSize}
+                        min={10}
+                        max={30}
+                        step={0.01}
+                        unit="mm"
+                        onChange={(v) => setSetting("clickerSquareSize", v)}
+                        commitOnRelease
+                        defaultValue={DEFAULT_SETTINGS.clickerSquareSize}
+                        onReset={() => setSetting("clickerSquareSize", DEFAULT_SETTINGS.clickerSquareSize)}
+                        {...hl(["click_walls"])}
+                      />
+                      <SliderRow
+                        label="Switch cavity depth"
+                        value={settings.clickerSquareDepth ?? DEFAULT_SETTINGS.clickerSquareDepth}
+                        min={1}
+                        max={Math.max(1, (settings.clickerTotalDepth ?? DEFAULT_SETTINGS.clickerTotalDepth) - (settings.clickerFloorDepth ?? DEFAULT_SETTINGS.clickerFloorDepth))}
+                        step={0.01}
+                        unit="mm"
+                        onChange={(v) => setSetting("clickerSquareDepth", v)}
+                        commitOnRelease
+                        defaultValue={DEFAULT_SETTINGS.clickerSquareDepth}
+                        onReset={() => setSetting("clickerSquareDepth", DEFAULT_SETTINGS.clickerSquareDepth)}
+                        {...hl(["click_walls"])}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Actuator boss + MX cross pocket */}
+                  <div className="border-t border-border/40 pt-5">
+                    <div className="flex items-center gap-1.5 mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">
+                      Actuator Boss
+                      <InfoTooltip text="The cylindrical boss on the clicker that engages the MX switch stem. Cross pocket sits on top." />
+                    </div>
+                    <div className="space-y-5">
+                      <SliderRow
+                        label="Boss diameter"
+                        value={settings.bossDiameter ?? DEFAULT_SETTINGS.bossDiameter}
+                        min={1}
+                        max={15}
+                        step={0.01}
+                        unit="mm"
+                        onChange={(v) => setSetting("bossDiameter", v)}
+                        commitOnRelease
+                        defaultValue={DEFAULT_SETTINGS.bossDiameter}
+                        onReset={() => setSetting("bossDiameter", DEFAULT_SETTINGS.bossDiameter)}
+                        {...hl(["click_boss"])}
+                      />
+                      <SliderRow
+                        label="Boss height"
+                        value={settings.bossHeight ?? DEFAULT_SETTINGS.bossHeight}
+                        min={0.5}
+                        max={15}
+                        step={0.01}
+                        unit="mm"
+                        onChange={(v) => setSetting("bossHeight", v)}
+                        commitOnRelease
+                        defaultValue={DEFAULT_SETTINGS.bossHeight}
+                        onReset={() => setSetting("bossHeight", DEFAULT_SETTINGS.bossHeight)}
+                        {...hl(["click_boss"])}
+                      />
+                      <SliderRow
+                        label="Boss floor gap"
+                        value={settings.bossFloorGap ?? DEFAULT_SETTINGS.bossFloorGap}
+                        min={0}
+                        max={Math.max(0, (settings.clickerFloorDepth ?? DEFAULT_SETTINGS.clickerFloorDepth) - 0.1)}
+                        step={0.01}
+                        unit="mm"
+                        onChange={(v) => setSetting("bossFloorGap", v)}
+                        commitOnRelease
+                        defaultValue={DEFAULT_SETTINGS.bossFloorGap}
+                        onReset={() => setSetting("bossFloorGap", DEFAULT_SETTINGS.bossFloorGap)}
+                        {...hl(["click_boss"])}
+                      />
+                      <div className="pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+                        MX cross pocket
+                      </div>
+                      <SliderRow
+                        label="Cross size"
+                        value={settings.crossSize ?? DEFAULT_SETTINGS.crossSize}
+                        min={2}
+                        max={6}
+                        step={0.01}
+                        unit="mm"
+                        onChange={(v) => setSetting("crossSize", v)}
+                        commitOnRelease
+                        defaultValue={DEFAULT_SETTINGS.crossSize}
+                        onReset={() => setSetting("crossSize", DEFAULT_SETTINGS.crossSize)}
+                        {...hl(["click_boss"])}
+                      />
+                      <SliderRow
+                        label="Cross depth"
+                        value={settings.crossDepth ?? DEFAULT_SETTINGS.crossDepth}
+                        min={0.5}
+                        max={Math.max(0.5, (settings.bossHeight ?? DEFAULT_SETTINGS.bossHeight) - 0.05)}
+                        step={0.01}
+                        unit="mm"
+                        onChange={(v) => setSetting("crossDepth", v)}
+                        commitOnRelease
+                        defaultValue={DEFAULT_SETTINGS.crossDepth}
+                        onReset={() => setSetting("crossDepth", DEFAULT_SETTINGS.crossDepth)}
+                        {...hl(["click_boss"])}
+                      />
+                      <SliderRow
+                        label="Arm width"
+                        value={settings.crossArmWidth ?? DEFAULT_SETTINGS.crossArmWidth}
+                        min={0.8}
+                        max={Math.max(0.8, (settings.crossSize ?? DEFAULT_SETTINGS.crossSize) * 0.9)}
+                        step={0.01}
+                        unit="mm"
+                        onChange={(v) => setSetting("crossArmWidth", v)}
+                        commitOnRelease
+                        defaultValue={DEFAULT_SETTINGS.crossArmWidth}
+                        onReset={() => setSetting("crossArmWidth", DEFAULT_SETTINGS.crossArmWidth)}
+                        {...hl(["click_boss"])}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Cherry MX 5-pin holes */}
+                  <div className="border-t border-border/40 pt-5 space-y-3">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={settings.pinHolesEnabled}
+                        onChange={(e) => setSetting("pinHolesEnabled", e.target.checked)}
+                        className="h-4 w-4 rounded accent-primary"
+                      />
+                      <span className="text-sm">Cherry MX 5-pin holes</span>
+                      <InfoTooltip text="Punches the Cherry MX 5-pin footprint into the deepest section of the pocket: Ø4 mm center guide · Ø1.8 mm retention pegs (±5.08 mm) · Ø1.5 mm contacts (±3.81 mm / −2.54 mm). The pin section sits below the keycap square — from the pocket floor upward." />
+                      <ResetButton
+                        isDefault={settings.pinHolesEnabled === DEFAULT_SETTINGS.pinHolesEnabled}
+                        onReset={() => setSetting("pinHolesEnabled", DEFAULT_SETTINGS.pinHolesEnabled)}
+                        defaultLabel={DEFAULT_SETTINGS.pinHolesEnabled ? "on" : "off"}
+                      />
+                    </label>
+                    {settings.pinHolesEnabled && (
+                      <div className="space-y-3 pl-6">
+                        <SliderRow
+                          label="Pin section depth"
+                          value={settings.pinHoleDepth ?? DEFAULT_SETTINGS.pinHoleDepth}
+                          min={1}
+                          max={Math.max(1, (settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth) - 1)}
+                          step={0.01}
+                          unit="mm"
+                          onChange={(v) => setSetting("pinHoleDepth", v)}
+                          defaultValue={DEFAULT_SETTINGS.pinHoleDepth}
+                          onReset={() => setSetting("pinHoleDepth", DEFAULT_SETTINGS.pinHoleDepth)}
+                          commitOnRelease
+                          {...hl(["shell_pin"])}
+                        />
+                        <SliderRow
+                          label="Print clearance"
+                          value={settings.pinHoleRadius ?? DEFAULT_SETTINGS.pinHoleRadius}
+                          min={0}
+                          max={0.5}
+                          step={0.01}
+                          unit="mm"
+                          onChange={(v) => setSetting("pinHoleRadius", v)}
+                          commitOnRelease
+                          defaultValue={DEFAULT_SETTINGS.pinHoleRadius}
+                          onReset={() => setSetting("pinHoleRadius", DEFAULT_SETTINGS.pinHoleRadius)}
+                          {...hl(["shell_pin"])}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pocket position nudge */}
+                  <div className="border-t border-border/40 pt-5 space-y-3">
+                    <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">
+                      Pocket position nudge
+                      <InfoTooltip text="Shifts the keycap pocket, switch cavity, and boss together as a unit. Use this to visually re-centre the switch on irregular or asymmetric shapes. Both parts move identically so they stay aligned." />
+                    </div>
+                    <SliderRow
+                      label="Offset X"
+                      value={settings.pocketOffsetX ?? 0}
+                      min={-20}
+                      max={20}
+                      step={0.1}
+                      unit="mm"
+                      onChange={(v) => setSetting("pocketOffsetX", v)}
+                      defaultValue={DEFAULT_SETTINGS.pocketOffsetX}
+                      onReset={() => setSetting("pocketOffsetX", DEFAULT_SETTINGS.pocketOffsetX)}
+                      {...hl(["shell_walls", "click_boss", "click_walls"])}
+                    />
+                    <SliderRow
+                      label="Offset Y"
+                      value={settings.pocketOffsetY ?? 0}
+                      min={-20}
+                      max={20}
+                      step={0.1}
+                      unit="mm"
+                      onChange={(v) => setSetting("pocketOffsetY", v)}
+                      defaultValue={DEFAULT_SETTINGS.pocketOffsetY}
+                      onReset={() => setSetting("pocketOffsetY", DEFAULT_SETTINGS.pocketOffsetY)}
+                      {...hl(["shell_walls", "click_boss", "click_walls"])}
+                    />
+                  </div>
+
+                </CollapsibleContent>
+              </Collapsible>
             )}
 
             {/* Parts legend */}
             {sidebarMode === "advanced" && (
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                Parts
-              </h2>
-              <div className="space-y-1.5 text-xs">
-                <LegendRow color="#6C63FF" label="Outer wall (ring)" />
-                <LegendRow color="#9B94FF" label="Solid floor + keycap square walls" />
-                {settings.pinHolesEnabled && (
-                  <LegendRow color="#7C74E8" label="MX pin-hole section" />
-                )}
-                <LegendRow color="#10B981" label="Inner clicker body" />
-                <LegendRow color="#34D399" label="Actuator boss" />
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                  Parts
+                </h2>
+                <div className="space-y-1.5 text-xs">
+                  <LegendRow color="#6C63FF" label="Outer wall (ring)" />
+                  <LegendRow color="#9B94FF" label="Solid floor + keycap square walls" />
+                  {settings.pinHolesEnabled && (
+                    <LegendRow color="#7C74E8" label="MX pin-hole section" />
+                  )}
+                  <LegendRow color="#10B981" label="Inner clicker body" />
+                  <LegendRow color="#34D399" label="Actuator boss" />
+                </div>
+                {svgState && (() => {
+                  const kpd = settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth;
+                  const phd = settings.pinHoleDepth ?? DEFAULT_SETTINGS.pinHoleDepth;
+                  const shellHousing = settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing;
+                  const shellFloor = settings.shellSolidFloor ?? DEFAULT_SETTINGS.shellSolidFloor;
+                  const shellExt = settings.shellWallExtension ?? DEFAULT_SETTINGS.shellWallExtension;
+                  const pocketDepth = Math.min(kpd, shellHousing - 1);
+                  const pinDepth = settings.pinHolesEnabled ? Math.min(phd, pocketDepth - 1) : 0;
+                  const squareDepth = pocketDepth - pinDepth;
+                  return (
+                    <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                      <p>Solid floor: <span className="font-mono font-medium text-foreground">{shellFloor.toFixed(1)} mm</span></p>
+                      {settings.pinHolesEnabled && (
+                        <p>Pin section: <span className="font-mono font-medium text-foreground">{pinDepth.toFixed(1)} mm</span></p>
+                      )}
+                      <p>Keycap square: <span className="font-mono font-medium text-foreground">{squareDepth.toFixed(1)} mm</span></p>
+                      <p>Clicker recess: <span className="font-mono font-medium text-foreground">{shellExt.toFixed(1)} mm</span></p>
+                    </div>
+                  );
+                })()}
               </div>
-              {svgState && (() => {
-                const kpd = settings.keycapPocketDepth ?? DEFAULT_SETTINGS.keycapPocketDepth;
-                const phd = settings.pinHoleDepth ?? DEFAULT_SETTINGS.pinHoleDepth;
-                const shellHousing = settings.shellSwitchHousing ?? DEFAULT_SETTINGS.shellSwitchHousing;
-                const shellFloor = settings.shellSolidFloor ?? DEFAULT_SETTINGS.shellSolidFloor;
-                const shellExt = settings.shellWallExtension ?? DEFAULT_SETTINGS.shellWallExtension;
-                const pocketDepth = Math.min(kpd, shellHousing - 1);
-                const pinDepth = settings.pinHolesEnabled ? Math.min(phd, pocketDepth - 1) : 0;
-                const squareDepth = pocketDepth - pinDepth;
-                return (
-                  <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                    <p>Solid floor: <span className="font-mono font-medium text-foreground">{shellFloor.toFixed(1)} mm</span></p>
-                    {settings.pinHolesEnabled && (
-                      <p>Pin section: <span className="font-mono font-medium text-foreground">{pinDepth.toFixed(1)} mm</span></p>
-                    )}
-                    <p>Keycap square: <span className="font-mono font-medium text-foreground">{squareDepth.toFixed(1)} mm</span></p>
-                    <p>Clicker recess: <span className="font-mono font-medium text-foreground">{shellExt.toFixed(1)} mm</span></p>
-                  </div>
-                );
-              })()}
-            </div>
             )}
 
             {/* Actions — Advanced only. Simple mode keeps the sidebar to
                 upload, size, and preview color per the product spec. */}
             {sidebarMode === "advanced" && (
-            <div className="space-y-2">
-              <Button
-                className="w-full"
-                onClick={handleSave}
-                disabled={isSaving || !svgState}
-              >
-                {isGuest ? <LogIn className="h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                {isSaving
-                  ? "Saving…"
-                  : isGuest
-                    ? "Sign in to save"
-                    : projectId ? "Update Project" : "Save Project"}
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  className="w-full"
+                  onClick={handleSave}
+                  disabled={isSaving || !svgState}
+                >
+                  {isGuest ? <LogIn className="h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                  {isSaving
+                    ? "Saving…"
+                    : isGuest
+                      ? "Sign in to save"
+                      : projectId ? "Update Project" : "Save Project"}
+                </Button>
 
-              {/* Merge toggle (advanced only) */}
-              {sidebarMode === "advanced" && (
-              <label className="flex items-center gap-2 cursor-pointer select-none px-1 py-0.5">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded accent-indigo-600"
-                  checked={mergeForExport}
-                  onChange={(e) => setMergeForExport(e.target.checked)}
-                />
-                <span className="text-xs text-muted-foreground leading-tight">
-                  Merge parts on export
-                  <span className="block text-[10px] opacity-70">
-                    {mergeForExport
-                      ? "Shell & clicker exported as separate fused meshes"
-                      : "Each part exported individually"}
-                  </span>
-                </span>
-              </label>
-              )}
-
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleExportSTL}
-                disabled={!svgState}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {mergeForExport ? "Export STL (zip)" : "Export STL"}
-                {isGuest && (
-                  <span className="ml-2 text-[10px] text-muted-foreground">
-                    ({Math.max(0, 1 - getAnonStlExportCount())} free)
-                  </span>
+                {/* Merge toggle (advanced only) */}
+                {sidebarMode === "advanced" && (
+                  <label className="flex items-center gap-2 cursor-pointer select-none px-1 py-0.5">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded accent-indigo-600"
+                      checked={mergeForExport}
+                      onChange={(e) => setMergeForExport(e.target.checked)}
+                    />
+                    <span className="text-xs text-muted-foreground leading-tight">
+                      Merge parts on export
+                      <span className="block text-[10px] opacity-70">
+                        {mergeForExport
+                          ? "Shell & clicker exported as separate fused meshes"
+                          : "Each part exported individually"}
+                      </span>
+                    </span>
+                  </label>
                 )}
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleExport3MF}
-                disabled={!svgState}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {isPremium ? "Export 3MF" : <PremiumLabel>Export 3MF</PremiumLabel>}
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleExportOBJ}
-                disabled={!svgState}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {isPremium ? "Export OBJ" : <PremiumLabel>Export OBJ</PremiumLabel>}
-              </Button>
-              {settings.jigEnabled && (
+
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={handleExportJigSTL}
-                  disabled={!svgState || !jigFits}
-                  title={!jigFits ? "Jig doesn't fit — adjust dimensions" : undefined}
+                  onClick={handleExportSTL}
+                  disabled={!svgState}
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Export Jig STL
+                  {mergeForExport ? "Export STL (zip)" : "Export STL"}
+                  {isGuest && (
+                    <span className="ml-2 text-[10px] text-muted-foreground">
+                      ({Math.max(0, 1 - getAnonStlExportCount())} free)
+                    </span>
+                  )}
                 </Button>
-              )}
-            </div>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleExport3MF}
+                  disabled={!svgState}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {isPremium ? "Export 3MF" : <PremiumLabel>Export 3MF</PremiumLabel>}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleExportOBJ}
+                  disabled={!svgState}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {isPremium ? "Export OBJ" : <PremiumLabel>Export OBJ</PremiumLabel>}
+                </Button>
+                {settings.jigEnabled && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleExportJigSTL}
+                    disabled={!svgState || !jigFits}
+                    title={!jigFits ? "Jig doesn't fit — adjust dimensions" : undefined}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Jig STL
+                  </Button>
+                )}
+              </div>
             )}
 
           </div>
@@ -3199,108 +3206,101 @@ export default function Studio() {
           {/* ── View toggles (top-right) ── */}
           {svgState && (
             <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-2">
-            <div className="flex items-center gap-2">
-              {/* Dimensions toggle */}
-              <button
-                onClick={() => setShowDimensions((v) => !v)}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${
-                  showDimensions
-                    ? "bg-amber-600/80 border-amber-500 text-white shadow-lg"
-                    : "bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm"
-                }`}
-                title="Toggle dimension callouts"
-              >
-                <Ruler className="h-3.5 w-3.5" />
-                Dimensions
-              </button>
-              {/* Outer Shell visibility toggle */}
-              <button
-                onClick={() => setShowOuterShell((v) => !v)}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${
-                  showOuterShell
-                    ? "bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm"
-                    : "bg-rose-600/80 border-rose-500 text-white shadow-lg"
-                }`}
-                title={showOuterShell ? "Hide outer shell" : "Show outer shell"}
-                id="toggle-outer-shell"
-              >
-                {showOuterShell ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                Outer Shell
-              </button>
-              {/* Inner Clicker visibility toggle */}
-              <button
-                onClick={() => setShowInnerClicker((v) => !v)}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${
-                  showInnerClicker
-                    ? "bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm"
-                    : "bg-rose-600/80 border-rose-500 text-white shadow-lg"
-                }`}
-                title={showInnerClicker ? "Hide inner clicker" : "Show inner clicker"}
-                id="toggle-inner-clicker"
-              >
-                {showInnerClicker ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                Inner Clicker
-              </button>
-              {/* Wireframe toggle */}
-              <button
-                onClick={() => setViewMode((v) => v === "wireframe" ? "solid" : "wireframe")}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${
-                  viewMode === "wireframe"
-                    ? "bg-sky-600/90 border-sky-500 text-white shadow-lg"
-                    : "bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm"
-                }`}
-                title="Toggle wireframe view"
-              >
-                <Scan className="h-3.5 w-3.5" />
-                Wireframe
-              </button>
-              <button
-                onClick={() => requirePremium("fit_check", () => setFitCheckMode((v) => !v))}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${
-                  fitCheckMode
-                    ? "bg-indigo-600 border-indigo-500 text-white shadow-lg"
-                    : "bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm"
-                }`}
-                title="Toggle fit-check view — snap pieces together to verify pocket & recess alignment"
-              >
-                <Layers className="h-3.5 w-3.5" />
-                Fit Check
-                {!isPremium && <Crown className="h-3 w-3 text-amber-400" />}
-              </button>
-              {/* X-Ray (Premium) */}
-              <button
-                onClick={() => requirePremium("x_ray", () =>
-                  setViewMode((v) => v === "xray" ? "solid" : "xray")
+              <div className="flex items-center gap-2">
+                {/* Dimensions toggle */}
+                <button
+                  onClick={() => setShowDimensions((v) => !v)}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${showDimensions
+                      ? "bg-amber-600/80 border-amber-500 text-white shadow-lg"
+                      : "bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm"
+                    }`}
+                  title="Toggle dimension callouts"
+                >
+                  <Ruler className="h-3.5 w-3.5" />
+                  Dimensions
+                </button>
+                {/* Outer Shell visibility toggle */}
+                <button
+                  onClick={() => setShowOuterShell((v) => !v)}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${showOuterShell
+                      ? "bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm"
+                      : "bg-rose-600/80 border-rose-500 text-white shadow-lg"
+                    }`}
+                  title={showOuterShell ? "Hide outer shell" : "Show outer shell"}
+                  id="toggle-outer-shell"
+                >
+                  {showOuterShell ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                  Outer Shell
+                </button>
+                {/* Inner Clicker visibility toggle */}
+                <button
+                  onClick={() => setShowInnerClicker((v) => !v)}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${showInnerClicker
+                      ? "bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm"
+                      : "bg-rose-600/80 border-rose-500 text-white shadow-lg"
+                    }`}
+                  title={showInnerClicker ? "Hide inner clicker" : "Show inner clicker"}
+                  id="toggle-inner-clicker"
+                >
+                  {showInnerClicker ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                  Inner Clicker
+                </button>
+                {/* Wireframe toggle */}
+                <button
+                  onClick={() => setViewMode((v) => v === "wireframe" ? "solid" : "wireframe")}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${viewMode === "wireframe"
+                      ? "bg-sky-600/90 border-sky-500 text-white shadow-lg"
+                      : "bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm"
+                    }`}
+                  title="Toggle wireframe view"
+                >
+                  <Scan className="h-3.5 w-3.5" />
+                  Wireframe
+                </button>
+                <button
+                  onClick={() => requirePremium("fit_check", () => setFitCheckMode((v) => !v))}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${fitCheckMode
+                      ? "bg-indigo-600 border-indigo-500 text-white shadow-lg"
+                      : "bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm"
+                    }`}
+                  title="Toggle fit-check view — snap pieces together to verify pocket & recess alignment"
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  Fit Check
+                  {!isPremium && <Crown className="h-3 w-3 text-amber-400" />}
+                </button>
+                {/* X-Ray (Premium) */}
+                <button
+                  onClick={() => requirePremium("x_ray", () =>
+                    setViewMode((v) => v === "xray" ? "solid" : "xray")
+                  )}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${viewMode === "xray"
+                      ? "bg-fuchsia-600/90 border-fuchsia-500 text-white shadow-lg"
+                      : "bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm"
+                    }`}
+                  title="Toggle x-ray view"
+                >
+                  <EyeOff className="h-3.5 w-3.5" />
+                  X-Ray
+                  {!isPremium && <Crown className="h-3 w-3 text-amber-400" />}
+                </button>
+                {fitCheckMode && (
+                  <span className="text-[10px] text-indigo-300/80 bg-indigo-950/60 border border-indigo-800/40 rounded px-2 py-1 backdrop-blur-sm">
+                    Outer shell ghosted · clicker seated in recess
+                  </span>
                 )}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${
-                  viewMode === "xray"
-                    ? "bg-fuchsia-600/90 border-fuchsia-500 text-white shadow-lg"
-                    : "bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm"
-                }`}
-                title="Toggle x-ray view"
-              >
-                <EyeOff className="h-3.5 w-3.5" />
-                X-Ray
-                {!isPremium && <Crown className="h-3 w-3 text-amber-400" />}
-              </button>
-              {fitCheckMode && (
-                <span className="text-[10px] text-indigo-300/80 bg-indigo-950/60 border border-indigo-800/40 rounded px-2 py-1 backdrop-blur-sm">
-                  Outer shell ghosted · clicker seated in recess
-                </span>
-              )}
-              <button
-                onClick={() => setShowBanana((v) => !v)}
-                className={`flex items-center justify-center rounded-md px-2 py-1.5 text-xs font-medium border transition-colors ${
-                  showBanana
-                    ? "bg-indigo-600 border-indigo-500 text-white shadow-lg"
-                    : "bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm"
-                }`}
-                title="Banana for scale (200 mm)"
-                aria-label="Banana for scale"
-              >
-                <span aria-hidden style={{ color: "#FFE135" }}>🍌</span>
-              </button>
-            </div>
+                <button
+                  onClick={() => setShowBanana((v) => !v)}
+                  className={`flex items-center justify-center rounded-md px-2 py-1.5 text-xs font-medium border transition-colors ${showBanana
+                      ? "bg-indigo-600 border-indigo-500 text-white shadow-lg"
+                      : "bg-background/80 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm"
+                    }`}
+                  title="Banana for scale (200 mm)"
+                  aria-label="Banana for scale"
+                >
+                  <span aria-hidden style={{ color: "#FFE135" }}>🍌</span>
+                </button>
+              </div>
               {/* ── Controls hint — below the buttons row ── */}
               <div className="flex flex-col items-end gap-1 text-[10px] text-white/30 pointer-events-none select-none">
                 <div className="flex items-center gap-1.5">
@@ -3449,21 +3449,25 @@ export default function Studio() {
             {svgState && showDimensions && !fitCheckMode && sceneMetrics.modelW > 0 && (
               <>
                 {/* Shell: use actual outer-wall bounding box */}
-                <ModelDimensionAnnotation
-                  centerX={-sceneMetrics.separationX}
-                  widthMm={shellBounds.w}
-                  heightMm={shellBounds.h}
-                  color="#8b8fff"
-                  lineY={sceneMetrics.gridY}
-                />
+                {showOuterShell && (
+                  <ModelDimensionAnnotation
+                    centerX={-sceneMetrics.separationX}
+                    widthMm={shellBounds.w}
+                    heightMm={shellBounds.h}
+                    color="#8b8fff"
+                    lineY={sceneMetrics.gridY}
+                  />
+                )}
                 {/* Clicker: use actual clicker-body bounding box */}
-                <ModelDimensionAnnotation
-                  centerX={sceneMetrics.separationX}
-                  widthMm={clickerBounds.w}
-                  heightMm={clickerBounds.h}
-                  color="#34d399"
-                  lineY={sceneMetrics.gridY}
-                />
+                {showInnerClicker && (
+                  <ModelDimensionAnnotation
+                    centerX={sceneMetrics.separationX}
+                    widthMm={clickerBounds.w}
+                    heightMm={clickerBounds.h}
+                    color="#34d399"
+                    lineY={sceneMetrics.gridY}
+                  />
+                )}
               </>
             )}
 
@@ -3687,11 +3691,10 @@ function ResetButton({
       }}
       disabled={isDefault}
       title={isDefault ? "Already at default" : `Reset to ${defaultLabel}`}
-      className={`ml-auto flex items-center justify-center rounded p-0.5 transition-colors ${
-        isDefault
+      className={`ml-auto flex items-center justify-center rounded p-0.5 transition-colors ${isDefault
           ? "opacity-30 cursor-default"
           : "text-orange-500 hover:text-orange-400 hover:bg-accent/50 cursor-pointer"
-      }`}
+        }`}
     >
       <RotateCcw className="h-3 w-3" />
     </button>
@@ -3794,6 +3797,7 @@ function SliderRow({
   defaultValue,
   onReset,
   commitOnRelease = false,
+  variant = "card",
 }: {
   label: string;
   value: number;
@@ -3813,6 +3817,7 @@ function SliderRow({
    * `THREE.ExtrudeGeometry` 60 times a second.
    */
   commitOnRelease?: boolean;
+  variant?: "card" | "plain";
 }) {
   const [draft, setDraft] = useState<string | null>(null);
 
@@ -3835,9 +3840,13 @@ function SliderRow({
   const showReset = defaultValue !== undefined && onReset !== undefined;
   const isDefault = showReset && displayValue === defaultValue;
 
+  const containerClass = variant === "card"
+    ? "bg-muted/40 p-3 rounded-lg border border-border/50 shadow-sm"
+    : "";
+
   return (
-    <div onMouseEnter={onHighlightIn} onMouseLeave={onHighlightOut}>
-      <div className="flex justify-between items-center mb-1">
+    <div className={containerClass} onMouseEnter={onHighlightIn} onMouseLeave={onHighlightOut}>
+      <div className={`flex justify-between items-center ${variant === "card" ? "mb-3" : "mb-1"}`}>
         <Label className="text-xs">{label}</Label>
         <div className="flex items-center gap-1">
           <input
@@ -3861,11 +3870,10 @@ function SliderRow({
               onClick={onReset}
               disabled={isDefault}
               title={isDefault ? "Already at default" : `Reset to ${defaultValue}`}
-              className={`ml-0.5 flex items-center justify-center rounded p-0.5 transition-colors ${
-                isDefault
+              className={`ml-0.5 flex items-center justify-center rounded p-0.5 transition-colors ${isDefault
                   ? "opacity-30 cursor-default"
                   : "text-orange-500 hover:text-orange-400 hover:bg-accent/50 cursor-pointer"
-              }`}
+                }`}
             >
               <RotateCcw className="h-3 w-3" />
             </button>
